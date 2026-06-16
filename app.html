@@ -200,7 +200,7 @@ tbody td{padding:6px 9px;vertical-align:middle}
     </select>
   </div>
   <div class="twrap">
-    <table><thead><tr><th>Quote #</th><th>Company</th><th>Contact</th><th>Date</th><th>Status</th><th></th></tr></thead>
+    <table><thead><tr><th>Quote #</th><th>Company</th><th>Contact</th><th>Date</th><th>Status</th><th></th><th></th></tr></thead>
     <tbody id="qh-body"></tbody></table>
     <div id="qh-empty" class="empty">No quotes yet. Generate a Quote PDF to save here.</div>
   </div>
@@ -294,7 +294,7 @@ tbody td{padding:6px 9px;vertical-align:middle}
     <button onclick="exportContacts()" style="padding:6px 12px;background:var(--red);color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:12px">⬇ Export CSV</button>
   </div>
   <div class="twrap">
-    <table><thead><tr><th>Company</th><th>Contact</th><th>Email</th><th>Source</th><th>Date</th></tr></thead>
+    <table><thead><tr><th>Company</th><th>Contact</th><th>Email</th><th>Source</th><th>Date</th><th></th></tr></thead>
     <tbody id="ct-body"></tbody></table>
     <div id="ct-empty" class="empty">No contacts yet. Collected from Quote and Invoice forms.</div>
   </div>
@@ -593,6 +593,13 @@ function saveQEntry(d){
   fbSave('quotes',d.inv_num,e);
   toast('Quote saved!');
 }
+function delQuote(num){
+  if(!confirm('Delete quote '+num+'?'))return;
+  quotes=quotes.filter(function(e){return e.inv_num!==num;});
+  localStorage.setItem('cc_quotes',JSON.stringify(quotes));
+  if(window._db)window._db.collection('quotes').doc(num.replace(/[^a-zA-Z0-9]/g,'_')).delete().catch(function(){});
+  renderQH();toast('Quote deleted.');
+}
 function updQS(num,status){
   var e=quotes.find(function(x){return x.inv_num===num;});
   if(e){e.status=status;localStorage.setItem('cc_quotes',JSON.stringify(quotes));fbSave('quotes',num,e);renderQH();}
@@ -641,7 +648,11 @@ function renderQH(){
       var btn=document.createElement('button');btn.className='cvt r';btn.textContent='→ Convert';
       btn.addEventListener('click',function(){q2iFromHist(e.inv_num);});t5.appendChild(btn);
     }
-    [t0,t1,t2,t3,t4,t5].forEach(function(t){tr.appendChild(t);});
+    var t6=document.createElement('td');
+    var dBtn=document.createElement('button');dBtn.className='cvt o';dBtn.textContent='×';
+    dBtn.addEventListener('click',function(){delQuote(e.inv_num);});
+    t6.appendChild(dBtn);
+    [t0,t1,t2,t3,t4,t5,t6].forEach(function(t){tr.appendChild(t);});
     tbody.appendChild(tr);
   });
 }
@@ -776,6 +787,14 @@ function confirmDel(num){
 }
 
 // ─── CONTACTS ────────────────────────────────────────────────────
+function delContact(i){
+  if(!confirm('Remove this contact?'))return;
+  var key=(contacts[i].email||contacts[i].company||'').replace(/[^a-zA-Z0-9]/g,'_');
+  contacts.splice(i,1);
+  localStorage.setItem('cc_contacts',JSON.stringify(contacts));
+  if(key)fbDel('contacts',key);
+  renderCT();
+}
 function saveContact(d,src){
   if(!d.client_name&&!d.client_email)return;
   var ex=contacts.findIndex(function(c){return c.email===d.client_email&&c.company===d.client_name;});
@@ -789,12 +808,21 @@ function renderCT(){
   var el=document.getElementById('ct-body');
   if(!el)return;
   document.getElementById('ct-empty').style.display=contacts.length?'none':'block';
-  el.innerHTML=contacts.map(function(c){
+  el.innerHTML=contacts.map(function(c,i){
     return '<tr><td>'+(c.company||'-')+'</td><td>'+(c.contact||'-')+'</td>'
       +'<td>'+(c.email?'<a href="mailto:'+c.email+'" style="color:var(--red)">'+c.email+'</a>':'-')+'</td>'
       +'<td style="font-size:11px;color:#888">'+(c.source||'-')+'</td>'
-      +'<td style="font-size:11px;color:#888">'+(c.date||'-')+'</td></tr>';
+      +'<td style="font-size:11px;color:#888">'+(c.date||'-')+'</td>'
+      +'<td><button class="cvt o" onclick="delContact('+i+')" title="Delete">×</button></td></tr>';
   }).join('');
+}
+function delContact(i){
+  if(!confirm('Remove this contact?'))return;
+  var key=(contacts[i].email||contacts[i].company||'').replace(/[^a-zA-Z0-9]/g,'_');
+  contacts.splice(i,1);
+  localStorage.setItem('cc_contacts',JSON.stringify(contacts));
+  if(key&&window._db)window._db.collection('contacts').doc(key).delete().catch(function(){});
+  renderCT();
 }
 function exportContacts(){
   var h=['Company','Contact','Email','Source','Date'];
