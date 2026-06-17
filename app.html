@@ -463,7 +463,7 @@ function collect(p){
     client_city:g(p+'-city'),
     client_att:'Att. '+g(p+'-catt'),
     client_email:g(p+'-cemail'),
-    ev_service:g(p+'-es'),ev_dates:dv,ev_dur:g(p+'-edur'),
+    ev_service:g(p+'-es'),ev_dates:g(p+'-ed'),ev_dur:g(p+'-edur'),
     ev_net:g(p+'-net')||'NET 30',
     nop_min:g(p+'-nop'),
     shifts:JSON.parse(JSON.stringify(S[p].shifts)),
