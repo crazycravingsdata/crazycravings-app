@@ -132,11 +132,29 @@ tbody td{padding:6px 9px;vertical-align:middle}
 <div class="panel on" id="p-quote">
   <div class="grid">
     <div>
+      <div class="sec"><h3>Event Date &amp; Time</h3>
+        <div class="r2">
+          <div class="f"><label>Event Date</label><input id="q-ed" type="date" onchange="autoNum('q')"></div>
+          <div class="f"><label>Duration</label><input id="q-edur" placeholder="90 min Service Time"></div>
+        </div>
+        <div class="r2">
+          <div class="f"><label>Start Time</label>
+            <div style="display:flex;gap:4px">
+              <select id="q-tstart-h" style="flex:1;padding:6px;border:1px solid var(--bd);border-radius:5px;font-size:13px"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option  selected>9</option><option>10</option><option>11</option><option>12</option></select><select id="q-tstart-m" style="width:64px;padding:6px;border:1px solid var(--bd);border-radius:5px;font-size:13px"><option selected>00</option><option>05</option><option>10</option><option>15</option><option>20</option><option>25</option><option>30</option><option>35</option><option>40</option><option>45</option><option>50</option><option>55</option></select><select id="q-tstart-ap" style="flex:1;padding:6px;border:1px solid var(--bd);border-radius:5px;font-size:13px"><option  selected>AM</option><option>PM</option></select>
+            </div>
+          </div>
+          <div class="f"><label>End Time</label>
+            <div style="display:flex;gap:4px">
+              <select id="q-tend-h" style="flex:1;padding:6px;border:1px solid var(--bd);border-radius:5px;font-size:13px"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option  selected>11</option><option>12</option></select><select id="q-tend-m" style="width:64px;padding:6px;border:1px solid var(--bd);border-radius:5px;font-size:13px"><option selected>00</option><option>05</option><option>10</option><option>15</option><option>20</option><option>25</option><option>30</option><option>35</option><option>40</option><option>45</option><option>50</option><option>55</option></select><select id="q-tend-ap" style="flex:1;padding:6px;border:1px solid var(--bd);border-radius:5px;font-size:13px"><option>AM</option><option  selected>PM</option></select>
+            </div>
+          </div>
+        </div>
+      </div>
       <div class="sec"><h3>Quote Information</h3>
         <div class="r2">
           <div class="f"><label>Quote Number</label>
             <div class="pfx"><span>#</span><input id="q-num" value="QT-001"></div></div>
-          <div class="f"><label>Date</label><input id="q-date" type="date"></div>
+          <div class="f"><label>Quote Date</label><input id="q-date" type="date"></div>
         </div>
         <div class="f"><label>PO# <small style="color:#aaa">optional</small></label><input id="q-po" placeholder="PO-45678"></div>
       </div>
@@ -147,16 +165,16 @@ tbody td{padding:6px 9px;vertical-align:middle}
         <div class="f"><label>Contact</label>
           <div class="pfx"><span>Att.</span><input id="q-catt" placeholder="Jessica Brown"></div></div>
         <div class="f"><label>Contact Email</label><input id="q-cemail" type="email" placeholder="jessica@company.com"></div>
+        <div class="f"><label>Additional Email(s) <small style="color:#aaa">optional</small></label><input id="q-cemail2" type="email" placeholder="manager@company.com"></div>
+        <div class="f"><label>&nbsp;</label><input id="q-cemail3" type="email" placeholder="billing@company.com"></div>
       </div>
       <div class="sec"><h3>Event (For)</h3>
-        <div class="f"><label>Service</label><select id="q-es">
+        <div class="f"><label>Service</label><select id="q-es" onchange="autoFillDesc('q')">
           <option value="">-- Select --</option>
           <option>Ice Cream Sundae</option>
           <option>Ice Cream Only</option>
           <option>Ice Cream Sundaes &amp; Ice Cream Only</option>
         </select></div>
-        <div class="f"><label>Date(s)</label><input id="q-ed" type="date"></div>
-        <div class="f"><label>Duration</label><input id="q-edur" placeholder="90 min Service Time"></div>
         <div class="f"><label>NET Days</label><select id="q-net">
           <option>NET 15</option><option selected>NET 30</option><option>NET 45</option><option>NET 60</option>
         </select></div>
@@ -192,12 +210,15 @@ tbody td{padding:6px 9px;vertical-align:middle}
 
 <!-- QUOTES SENT -->
 <div class="panel" id="p-qhist">
-  <div class="tbar" style="justify-content:space-between">
+  <div class="tbar" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
     <h2 style="font-size:15px;font-weight:700">Quotes Sent</h2>
-    <select id="qhf" onchange="renderQH()" style="padding:6px 9px;border:1px solid var(--bd);border-radius:5px">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <input id="qh-search" type="text" placeholder="Search..." oninput="renderQH()" style="padding:6px 9px;border:1px solid var(--bd);border-radius:5px;font-size:13px;width:160px">
+      <select id="qhf" onchange="renderQH()" style="padding:6px 9px;border:1px solid var(--bd);border-radius:5px">
       <option value="">All</option><option value="sent">Sent</option>
       <option value="approved">Approved</option><option value="declined">Declined</option><option value="no_response">No Response</option>
     </select>
+    </div>
   </div>
   <div class="twrap">
     <table><thead><tr><th>Quote #</th><th>Company</th><th>Contact</th><th>Date</th><th>Status</th><th></th><th></th></tr></thead>
@@ -210,11 +231,29 @@ tbody td{padding:6px 9px;vertical-align:middle}
 <div class="panel" id="p-invoice">
   <div class="grid">
     <div>
+      <div class="sec"><h3>Event Date &amp; Time</h3>
+        <div class="r2">
+          <div class="f"><label>Event Date</label><input id="i-ed" type="date" onchange="autoNum('i')"></div>
+          <div class="f"><label>Duration</label><input id="i-edur" placeholder="90 min Service Time"></div>
+        </div>
+        <div class="r2">
+          <div class="f"><label>Start Time</label>
+            <div style="display:flex;gap:4px">
+              <select id="i-tstart-h" style="flex:1;padding:6px;border:1px solid var(--bd);border-radius:5px;font-size:13px"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option  selected>9</option><option>10</option><option>11</option><option>12</option></select><select id="i-tstart-m" style="width:64px;padding:6px;border:1px solid var(--bd);border-radius:5px;font-size:13px"><option selected>00</option><option>05</option><option>10</option><option>15</option><option>20</option><option>25</option><option>30</option><option>35</option><option>40</option><option>45</option><option>50</option><option>55</option></select><select id="i-tstart-ap" style="flex:1;padding:6px;border:1px solid var(--bd);border-radius:5px;font-size:13px"><option  selected>AM</option><option>PM</option></select>
+            </div>
+          </div>
+          <div class="f"><label>End Time</label>
+            <div style="display:flex;gap:4px">
+              <select id="i-tend-h" style="flex:1;padding:6px;border:1px solid var(--bd);border-radius:5px;font-size:13px"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option  selected>11</option><option>12</option></select><select id="i-tend-m" style="width:64px;padding:6px;border:1px solid var(--bd);border-radius:5px;font-size:13px"><option selected>00</option><option>05</option><option>10</option><option>15</option><option>20</option><option>25</option><option>30</option><option>35</option><option>40</option><option>45</option><option>50</option><option>55</option></select><select id="i-tend-ap" style="flex:1;padding:6px;border:1px solid var(--bd);border-radius:5px;font-size:13px"><option>AM</option><option  selected>PM</option></select>
+            </div>
+          </div>
+        </div>
+      </div>
       <div class="sec"><h3>Invoice Information</h3>
         <div class="r2">
           <div class="f"><label>Invoice Number</label>
             <div class="pfx"><span>#</span><input id="i-num" value="INV-001"></div></div>
-          <div class="f"><label>Date</label><input id="i-date" type="date"></div>
+          <div class="f"><label>Invoice Date</label><input id="i-date" type="date"></div>
         </div>
         <div class="f"><label>PO# <small style="color:#aaa">optional</small></label><input id="i-po" placeholder="PO-45678"></div>
       </div>
@@ -225,16 +264,16 @@ tbody td{padding:6px 9px;vertical-align:middle}
         <div class="f"><label>Contact</label>
           <div class="pfx"><span>Att.</span><input id="i-catt" placeholder="Jessica Brown"></div></div>
         <div class="f"><label>Contact Email</label><input id="i-cemail" type="email" placeholder="jessica@company.com"></div>
+        <div class="f"><label>Additional Email(s) <small style="color:#aaa">optional</small></label><input id="i-cemail2" type="email" placeholder="manager@company.com"></div>
+        <div class="f"><label>&nbsp;</label><input id="i-cemail3" type="email" placeholder="billing@company.com"></div>
       </div>
       <div class="sec"><h3>Event (For)</h3>
-        <div class="f"><label>Service</label><select id="i-es">
+        <div class="f"><label>Service</label><select id="i-es" onchange="autoFillDesc('i')">
           <option value="">-- Select --</option>
           <option>Ice Cream Sundae</option>
           <option>Ice Cream Only</option>
           <option>Ice Cream Sundaes &amp; Ice Cream Only</option>
         </select></div>
-        <div class="f"><label>Date(s)</label><input id="i-ed" type="date"></div>
-        <div class="f"><label>Duration</label><input id="i-edur" placeholder="90 min Service Time"></div>
         <div class="f"><label>NET Days</label><select id="i-net">
           <option>NET 15</option><option selected>NET 30</option><option>NET 45</option><option>NET 60</option>
         </select></div>
@@ -271,19 +310,60 @@ tbody td{padding:6px 9px;vertical-align:middle}
 
 <!-- INVOICE STATUS -->
 <div class="panel" id="p-istatus">
-  <div class="tbar" style="justify-content:space-between">
+  <div class="tbar" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
     <h2 style="font-size:15px;font-weight:700">Invoice Status</h2>
-    <select id="isf" onchange="renderIS()" style="padding:6px 9px;border:1px solid var(--bd);border-radius:5px">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <input id="is-search" type="text" placeholder="Search..." oninput="renderIS()" style="padding:6px 9px;border:1px solid var(--bd);border-radius:5px;font-size:13px;width:160px">
+      <select id="is-sort" onchange="renderIS()" style="padding:6px 9px;border:1px solid var(--bd);border-radius:5px;font-size:13px">
+        <option value="">Sort by...</option>
+        <option value="num-asc">Invoice # ↑</option>
+        <option value="num-desc">Invoice # ↓</option>
+        <option value="company-asc">Company A→Z</option>
+        <option value="company-desc">Company Z→A</option>
+        <option value="sent-desc">Sent (Newest)</option>
+        <option value="sent-asc">Sent (Oldest)</option>
+        <option value="due-asc">Due (Soonest)</option>
+        <option value="due-desc">Due (Latest)</option>
+        <option value="total-desc">Total (High→Low)</option>
+        <option value="total-asc">Total (Low→High)</option>
+      </select>
+      <select id="isf" onchange="renderIS()" style="padding:6px 9px;border:1px solid var(--bd);border-radius:5px">
       <option value="">All</option>
       <option value="unpaid">🟡 Unpaid</option>
       <option value="overdue">🔴 Overdue</option>
       <option value="paid">🟢 Paid</option>
     </select>
+      <select id="is-period" onchange="renderIS()" style="padding:6px 9px;border:1px solid var(--bd);border-radius:5px;font-size:13px">
+        <option value="">All Time</option>
+        <optgroup label="Month">
+          <option value="m-01">January</option><option value="m-02">February</option>
+          <option value="m-03">March</option><option value="m-04">April</option>
+          <option value="m-05">May</option><option value="m-06">June</option>
+          <option value="m-07">July</option><option value="m-08">August</option>
+          <option value="m-09">September</option><option value="m-10">October</option>
+          <option value="m-11">November</option><option value="m-12">December</option>
+        </optgroup>
+        <optgroup label="Quarter">
+          <option value="q-1">Q1 (Jan-Mar)</option><option value="q-2">Q2 (Apr-Jun)</option>
+          <option value="q-3">Q3 (Jul-Sep)</option><option value="q-4">Q4 (Oct-Dec)</option>
+        </optgroup>
+        <optgroup label="Year">
+          <option value="y-2024">2024</option><option value="y-2025">2025</option>
+          <option value="y-2026">2026</option><option value="y-2027">2027</option>
+        </optgroup>
+      </select>
+      <button onclick="genISReport()" style="padding:6px 12px;background:#555;color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-weight:600">📊 Report</button>
+    </div>
   </div>
   <div class="twrap">
-    <table><thead><tr><th>Status</th><th>Invoice #</th><th>Company</th><th>Contact</th><th>Sent</th><th>Due</th><th>Received</th><th>Total</th><th>Payment</th><th>Actions</th></tr></thead>
+    <table><thead><tr><th>Status</th><th>Invoice #</th><th>Sent?</th><th>Company</th><th>Contact</th><th>Sent</th><th>Due</th><th>Received</th><th>Total</th><th>Payment</th><th>Actions</th></tr></thead>
     <tbody id="is-body"></tbody></table>
     <div id="is-empty" class="empty">No invoices yet. Generate an Invoice PDF to track it here.</div>
+  </div>
+  <!-- IS Footer -->
+  <div id="is-footer" style="max-width:1100px;margin-top:10px;padding:10px 14px;background:#fff;border-radius:8px;border:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center">
+    <span id="is-footer-count" style="font-size:13px;color:var(--mut)">0 invoices</span>
+    <span id="is-footer-total" style="font-size:15px;font-weight:700;color:var(--red)">Total: $ 0.00</span>
   </div>
 </div>
 
@@ -337,6 +417,107 @@ var contacts=JSON.parse(localStorage.getItem('cc_contacts')||'[]');
 var wh=localStorage.getItem('cc_wh')||'';
 
 // ─── LOGIN ───────────────────────────────────────────────────────
+
+
+function autoFillDesc(p){
+  var svc=document.getElementById(p+'-es').value;
+  var items=S[p].items;
+  // Find or set description items based on service
+  if(svc==='Ice Cream Sundae'){
+    // Ensure first non-travel item has Ice Cream Sundae
+    var idx=items.findIndex(function(it){return it.desc!=='Travel fee';});
+    if(idx>=0){items[idx].desc='Ice Cream Sundae';}
+    else{items.push({desc:'Ice Cream Sundae',ppp:'',qty:'',amt:''});}
+    // Remove any Ice Cream Only line
+    S[p].items=items.filter(function(it){return it.desc!=='Ice Cream Only';});
+  } else if(svc==='Ice Cream Only'){
+    var idx=items.findIndex(function(it){return it.desc!=='Travel fee';});
+    if(idx>=0){items[idx].desc='Ice Cream Only';}
+    else{items.push({desc:'Ice Cream Only',ppp:'',qty:'',amt:''});}
+    S[p].items=items.filter(function(it){return it.desc!=='Ice Cream Sundae';});
+  } else if(svc==='Ice Cream Sundaes & Ice Cream Only'){
+    // Remove any single-service lines, add both
+    S[p].items=items.filter(function(it){return it.desc==='Travel fee';});
+    S[p].items.push({desc:'Ice Cream Sundae',ppp:'',qty:'',amt:''});
+    S[p].items.push({desc:'Ice Cream Only',ppp:'',qty:'',amt:''});
+  }
+  renderItems(p);
+}
+
+function autoNum(p){
+  var ed=document.getElementById(p+'-ed').value;
+  if(!ed)return;
+  var d=new Date(ed+'T12:00:00');
+  var mm=String(d.getMonth()+1).padStart(2,'0');
+  var dd=String(d.getDate()).padStart(2,'0');
+  var yy=String(d.getFullYear()).slice(2);
+  var num=mm+dd+yy;
+  var el=document.getElementById(p+'-num');
+  if(el)el.value=num;
+}
+function getTimeStr(p){
+  var sh=document.getElementById(p+'-tstart-h');
+  var sm=document.getElementById(p+'-tstart-m');
+  var sa=document.getElementById(p+'-tstart-ap');
+  var eh=document.getElementById(p+'-tend-h');
+  var em=document.getElementById(p+'-tend-m');
+  var ea=document.getElementById(p+'-tend-ap');
+  if(!sh)return'';
+  var sm2=sm?sm.value.replace(':',''):'00';
+  var em2=em?em.value.replace(':',''):'00';
+  return sh.value+':'+sm2+' '+sa.value+' - '+eh.value+':'+em2+' '+ea.value;
+}
+
+
+
+function autoFillDesc(p){
+  var svc=document.getElementById(p+'-es').value;
+  var items=S[p].items;
+  // Find or set description items based on service
+  if(svc==='Ice Cream Sundae'){
+    // Ensure first non-travel item has Ice Cream Sundae
+    var idx=items.findIndex(function(it){return it.desc!=='Travel fee';});
+    if(idx>=0){items[idx].desc='Ice Cream Sundae';}
+    else{items.push({desc:'Ice Cream Sundae',ppp:'',qty:'',amt:''});}
+    // Remove any Ice Cream Only line
+    S[p].items=items.filter(function(it){return it.desc!=='Ice Cream Only';});
+  } else if(svc==='Ice Cream Only'){
+    var idx=items.findIndex(function(it){return it.desc!=='Travel fee';});
+    if(idx>=0){items[idx].desc='Ice Cream Only';}
+    else{items.push({desc:'Ice Cream Only',ppp:'',qty:'',amt:''});}
+    S[p].items=items.filter(function(it){return it.desc!=='Ice Cream Sundae';});
+  } else if(svc==='Ice Cream Sundaes & Ice Cream Only'){
+    // Remove any single-service lines, add both
+    S[p].items=items.filter(function(it){return it.desc==='Travel fee';});
+    S[p].items.push({desc:'Ice Cream Sundae',ppp:'',qty:'',amt:''});
+    S[p].items.push({desc:'Ice Cream Only',ppp:'',qty:'',amt:''});
+  }
+  renderItems(p);
+}
+
+function autoNum(p){
+  var ed=document.getElementById(p+'-ed').value;
+  if(!ed)return;
+  var d=new Date(ed+'T12:00:00');
+  var mm=String(d.getMonth()+1).padStart(2,'0');
+  var dd=String(d.getDate()).padStart(2,'0');
+  var yy=String(d.getFullYear()).slice(2);
+  var num=mm+dd+yy;
+  var el=document.getElementById(p+'-num');
+  if(el)el.value=num;
+}
+function getTimeStr(p){
+  var sh=document.getElementById(p+'-tstart-h');
+  var sm=document.getElementById(p+'-tstart-m');
+  var sa=document.getElementById(p+'-tstart-ap');
+  var eh=document.getElementById(p+'-tend-h');
+  var em=document.getElementById(p+'-tend-m');
+  var ea=document.getElementById(p+'-tend-ap');
+  if(!sh)return'';
+  var sm2=sm?sm.value.replace(':',''):'00';
+  var em2=em?em.value.replace(':',''):'00';
+  return sh.value+':'+sm2+' '+sa.value+' - '+eh.value+':'+em2+' '+ea.value;
+}
 function doLogin(){
   var p=document.getElementById('lpwd').value;
   if(p==='crazy@admin'||p==='CrazyCravings2026!'){
@@ -463,7 +644,10 @@ function collect(p){
     client_city:g(p+'-city'),
     client_att:'Att. '+g(p+'-catt'),
     client_email:g(p+'-cemail'),
+    client_email2:g(p+'-cemail2'),
+    client_email3:g(p+'-cemail3'),
     ev_service:g(p+'-es'),ev_dates:g(p+'-ed'),ev_dur:g(p+'-edur'),
+    ev_time:getTimeStr(p),
     ev_net:g(p+'-net')||'NET 30',
     nop_min:g(p+'-nop'),
     shifts:JSON.parse(JSON.stringify(S[p].shifts)),
@@ -513,7 +697,7 @@ function makePDF(d,isQ){
   var FX=xp(108);
   doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor('#C0153A');doc.text('For:',FX,byS);
   var evDate=d.ev_dates?new Date(d.ev_dates+'T12:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}):d.inv_date;
-  var fL=[d.ev_service,evDate,d.ev_dur].filter(Boolean);
+  var fL=[d.ev_service,evDate,d.ev_dur,d.ev_time].filter(Boolean);
   doc.setFont('helvetica','normal');doc.setTextColor('#333');
   fL.forEach(function(ln,i){doc.text(ln,FX,byS+(i+1)*LH);});
   var forY=byS+(fL.length+1)*LH+4;
@@ -619,13 +803,15 @@ function fillInvoice(d){
   sv('i-cemail',d.client_email);sv('i-es',d.ev_service);sv('i-ed',d.ev_dates);
   sv('i-edur',d.ev_dur);sv('i-nop',d.nop_min);
   var ne=document.getElementById('i-net');if(ne&&d.ev_net)ne.value=d.ev_net;
+  if(d.ev_time){var tm=d.ev_time.match(/(\d+):00 (AM|PM) - (\d+):00 (AM|PM)/);if(tm){var sh=document.getElementById('i-tstart-h');var sa=document.getElementById('i-tstart-ap');var eh=document.getElementById('i-tend-h');var ea=document.getElementById('i-tend-ap');if(sh)sh.value=tm[1];if(sa)sa.value=tm[2];if(eh)eh.value=tm[3];if(ea)ea.value=tm[4];}}
   S['i'].items=JSON.parse(JSON.stringify(d.items||[]));
   S['i'].shifts=JSON.parse(JSON.stringify(d.shifts||[]));
   renderItems('i');renderShifts('i');
 }
 function renderQH(){
   var f=document.getElementById('qhf').value;
-  var filt=quotes.filter(function(e){return !f||e.status===f;});
+  var s=(document.getElementById('qh-search')||{value:''}).value.toLowerCase();
+  var filt=quotes.filter(function(e){return (!f||e.status===f)&&(!s||(e.inv_num||'').toLowerCase().includes(s)||(e.client_name||'').toLowerCase().includes(s)||(e.client_att||'').toLowerCase().includes(s));});
   var tbody=document.getElementById('qh-body');
   document.getElementById('qh-empty').style.display=filt.length?'none':'block';
   tbody.innerHTML='';
@@ -678,13 +864,43 @@ function daysOver(due){
 }
 function renderIS(){
   var f=document.getElementById('isf').value;
+  var isS=(document.getElementById('is-search')||{value:''}).value.toLowerCase();
+  var sortVal=(document.getElementById('is-sort')||{value:''}).value;
   var filt=iStatus.filter(function(e){
     var ov=e.status==='unpaid'&&daysOver(e.due_date)>0;
+    var matchSearch=!isS||(e.inv_num||'').toLowerCase().includes(isS)||(e.client_name||'').toLowerCase().includes(isS)||(e.client_att||'').toLowerCase().includes(isS);
+    // Period filter
+    var period=(document.getElementById('is-period')||{value:''}).value;
+    var matchPeriod=true;
+    if(period){
+      var sd=(e.data&&e.data.ev_dates)?e.data.ev_dates:(e.send_date||'');
+      var yr=sd.slice(0,4),mo=sd.slice(5,7);
+      if(period.startsWith('m-'))matchPeriod=mo===period.slice(2);
+      else if(period.startsWith('q-')){var qn=parseInt(period.slice(2));matchPeriod=[['01','02','03'],['04','05','06'],['07','08','09'],['10','11','12']][qn-1].indexOf(mo)>=0;}
+      else if(period.startsWith('y-'))matchPeriod=yr===period.slice(2);
+    }
+    if(!matchSearch||!matchPeriod)return false;
     if(!f)return true;
     if(f==='overdue')return ov;
     if(f==='unpaid')return e.status==='unpaid'&&!ov;
     return e.status===f;
   });
+  // Apply sort
+  if(sortVal){
+    var sk=sortVal.split('-')[0], sd=sortVal.split('-')[1];
+    filt=filt.slice().sort(function(a,b){
+      var av,bv;
+      if(sk==='num'){av=(a.inv_num||'');bv=(b.inv_num||'');}
+      else if(sk==='company'){av=(a.client_name||'').toLowerCase();bv=(b.client_name||'').toLowerCase();}
+      else if(sk==='sent'){av=(a.send_date||'');bv=(b.send_date||'');}
+      else if(sk==='due'){av=(a.due_date||'');bv=(b.due_date||'');}
+      else if(sk==='total'){av=parseFloat(a.total||0);bv=parseFloat(b.total||0);}
+      else{av='';bv='';}
+      if(av<bv)return sd==='asc'?-1:1;
+      if(av>bv)return sd==='asc'?1:-1;
+      return 0;
+    });
+  }
   var tbody=document.getElementById('is-body');
   document.getElementById('is-empty').style.display=filt.length?'none':'block';
   tbody.innerHTML='';
@@ -695,6 +911,16 @@ function renderIS(){
     var t0=document.createElement('td');
     t0.innerHTML='<span class="dot '+(paid?'g':ov?'r':'y')+'"></span><span style="font-size:11px;color:'+(paid?'#1a8a4a':ov?'#ef4444':'#f59e0b')+'">'+(paid?'Paid':ov?'Overdue('+days+'d)':'Unpaid')+'</span>';
     var t1=document.createElement('td');t1.innerHTML='<strong>'+(e.inv_num||'-')+'</strong>';
+    // Sent? dropdown
+    var tSent=document.createElement('td');
+    var sentSel=document.createElement('select');sentSel.className='ss';
+    sentSel.innerHTML='<option value="no"'+(e.sent_status!=='yes'?' selected':'')+'>📭 Not Sent</option><option value="yes"'+(e.sent_status==='yes'?' selected':'')+'>📬 Sent</option>';
+    sentSel.addEventListener('change',function(){
+      e.sent_status=this.value;
+      localStorage.setItem('cc_istatus',JSON.stringify(iStatus));
+      fbSave('istatus',e.inv_num,e);
+    });
+    tSent.appendChild(sentSel);
     var t2=document.createElement('td');t2.textContent=e.client_name||'-';
     var t3=document.createElement('td');t3.textContent=e.client_att||'-';t3.style.cssText='color:#888;font-size:11px';
     var t4=document.createElement('td');t4.textContent=e.send_date||'-';
@@ -730,8 +956,20 @@ function renderIS(){
     });
     t9.appendChild(stSel);
     if(paid){
-      var cb=document.createElement('button');cb.className='cvt g';cb.textContent='→ Cash Book';
-      cb.addEventListener('click',function(){sendToCB(e.inv_num);});t9.appendChild(cb);
+      if(e.in_cashbook){
+        var cbDone=document.createElement('span');
+        cbDone.style.cssText='color:#1a8a4a;font-size:11px;font-weight:700;padding:3px 6px;background:#e6f7ee;border-radius:4px;white-space:nowrap';
+        cbDone.textContent='✓ In Cash Book';
+        t9.appendChild(cbDone);
+        // Receipt button
+        var rcptBtn=document.createElement('button');rcptBtn.className='cvt';
+        rcptBtn.style.background='#1a8a4a';rcptBtn.textContent='🧾 Receipt';
+        rcptBtn.addEventListener('click',function(){genReceipt(e.inv_num);});
+        t9.appendChild(rcptBtn);
+      } else {
+        var cb=document.createElement('button');cb.className='cvt g';cb.textContent='→ Cash Book';
+        cb.addEventListener('click',function(){sendToCB(e.inv_num);});t9.appendChild(cb);
+      }
     } else if(ov){
       var lb=document.createElement('button');lb.className='cvt o';lb.textContent='⚠ Late +3%';
       lb.addEventListener('click',function(){genLate(e.inv_num);});t9.appendChild(lb);
@@ -742,10 +980,214 @@ function renderIS(){
     var db=document.createElement('button');db.className='cvt o';db.textContent='🗑';
     db.addEventListener('click',function(){confirmDel(e.inv_num);});
     t9.appendChild(db);
-    [t0,t1,t2,t3,t4,t5,t6,t7,t8,t9].forEach(function(t){tr.appendChild(t);});
+    [t0,t1,tSent,t2,t3,t4,t5,t6,t7,t8,t9].forEach(function(t){tr.appendChild(t);});
     tbody.appendChild(tr);
   });
+  // Update IS footer
+  var isFC=document.getElementById('is-footer-count');
+  var isFT=document.getElementById('is-footer-total');
+  if(isFC) isFC.textContent=filt.length+' invoice'+(filt.length!==1?'s':'');
+  if(isFT){
+    var gTot=filt.reduce(function(s,e){return s+(e.total||0);},0);
+    isFT.textContent='Total: $ '+gTot.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
+  }
 }
+
+
+function genISReport(){
+  // Get current filtered list
+  var f=(document.getElementById('isf')||{value:''}).value;
+  var isS=(document.getElementById('is-search')||{value:''}).value.toLowerCase();
+  var period=(document.getElementById('is-period')||{value:''}).value;
+  var filt=iStatus.filter(function(e){
+    var ov=e.status==='unpaid'&&daysOver(e.due_date)>0;
+    var matchSearch=!isS||(e.inv_num||'').toLowerCase().includes(isS)||(e.client_name||'').toLowerCase().includes(isS)||(e.client_att||'').toLowerCase().includes(isS);
+    var matchPeriod=true;
+    if(period){
+      var sd=(e.data&&e.data.ev_dates)?e.data.ev_dates:(e.send_date||'');var yr=sd.slice(0,4),mo=sd.slice(5,7);
+      if(period.startsWith('m-'))matchPeriod=mo===period.slice(2);
+      else if(period.startsWith('q-')){var qn=parseInt(period.slice(2));matchPeriod=[['01','02','03'],['04','05','06'],['07','08','09'],['10','11','12']][qn-1].indexOf(mo)>=0;}
+      else if(period.startsWith('y-'))matchPeriod=yr===period.slice(2);
+    }
+    if(!matchSearch||!matchPeriod)return false;
+    if(!f)return true;
+    if(f==='overdue')return ov;
+    if(f==='unpaid')return e.status==='unpaid'&&!ov;
+    return e.status===f;
+  });
+  if(!filt.length){toast('No invoices to report.');return;}
+  if(typeof window.jspdf==='undefined'){toast('PDF not available - check internet');return;}
+  var doc=new window.jspdf.jsPDF({orientation:'portrait',unit:'pt',format:'a4'});
+  var PW=595.28,PH=841.89,L=40,R=PW-40,tW=R-L;
+  // Title
+  doc.setFont('helvetica','bold');doc.setFontSize(16);doc.setTextColor('#C0153A');
+  doc.text('Crazy Cravings — Invoice Report',PW/2,50,{align:'center'});
+  var periodLabel=period?(' — '+document.getElementById('is-period').options[document.getElementById('is-period').selectedIndex].text):'';
+  doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor('#666');
+  doc.text('Generated: '+new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})+periodLabel,PW/2,66,{align:'center'});
+  // Table header
+  var hY=90,rH=20,hH=22;
+  var cols={num:L,company:L+80,event:L+260,sent:L+390,total:R};
+  doc.setFillColor(192,21,58);doc.rect(L,hY,tW,hH,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor('#fff');
+  doc.text('Invoice #',cols.num+4,hY+14);
+  doc.text('Company',cols.company+4,hY+14);
+  doc.text('Event Date',cols.event+4,hY+14);
+  doc.text('Sent Date',cols.sent+4,hY+14);
+  doc.text('Total',cols.total,hY+14,{align:'right'});
+  var y=hY+hH,grandTotal=0;
+  filt.forEach(function(e,i){
+    if(i%2===0){doc.setFillColor(254,240,243);doc.rect(L,y,tW,rH,'F');}
+    doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor('#333');
+    doc.text((e.inv_num||'-').substring(0,14),cols.num+4,y+13);
+    doc.text((e.client_name||'-').substring(0,22),cols.company+4,y+13);
+    var evDate=(e.data&&e.data.ev_dates)?new Date(e.data.ev_dates+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):(e.send_date||'-');
+    doc.text(evDate,cols.event+4,y+13);
+    doc.text(e.send_date||'-',cols.sent+4,y+13);
+    var tot=e.total||0;grandTotal+=tot;
+    doc.text('$ '+tot.toFixed(2),cols.total,y+13,{align:'right'});
+    doc.setDrawColor('#eee');doc.setLineWidth(0.3);doc.line(L,y+rH,R,y+rH);
+    y+=rH;
+    // New page if needed
+    if(y>PH-80){doc.addPage();y=40;}
+  });
+  // Total row
+  y+=6;
+  doc.setDrawColor('#333');doc.setLineWidth(1);doc.line(L,y,R,y);y+=14;
+  doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor('#333');
+  doc.text('TOTAL ('+filt.length+' invoices)',L,y);
+  doc.setTextColor('#C0153A');
+  doc.text('$ '+grandTotal.toFixed(2),R,y,{align:'right'});
+  // Footer
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor('#999');
+  doc.text('Crazy Cravings Inc. | 845 Sawmill Rd, Ancaster | BL# 823586508',PW/2,PH-20,{align:'center'});
+  var fn='CC-Report-'+new Date().toISOString().slice(0,10)+'.pdf';
+  doc.save(fn);
+  toast('Report generated! ('+filt.length+' invoices)');
+}
+
+function genReceipt(num){
+  var en=iStatus.find(function(e){return e.inv_num===num;});
+  if(!en){toast('Invoice not found.');return;}
+  var d=en.data;
+  if(typeof window.jspdf==='undefined'){toast('PDF not available - check internet');return;}
+  var doc=new window.jspdf.jsPDF({orientation:'portrait',unit:'pt',format:'a4'});
+  var PW=595.28,PH=841.89;
+  function xp(mm){return mm*(PW/210);}
+  function yp(mm){return mm*(PH/297);}
+  // Add receipt template background
+  if(typeof RECEIPT_TMPL!=='undefined') doc.addImage(RECEIPT_TMPL,'PNG',0,0,PW,PH);
+  var L=xp(18),R=xp(185),LH=15;
+  // Header - PAYMENT RECEIPT
+  doc.setFont('helvetica','bold');doc.setFontSize(18);doc.setTextColor('#C0153A');
+  doc.text('PAYMENT RECEIPT',R,yp(58),{align:'right'});
+  doc.setFont('helvetica','normal');doc.setFontSize(13);doc.setTextColor('#333');
+  doc.text(d.inv_num||'',R,yp(64),{align:'right'});
+  doc.setTextColor('#666');
+  doc.text(en.received_date||d.inv_date,R,yp(70),{align:'right'});
+  // Bill To
+  var byS=yp(86);
+  doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor('#C0153A');
+  doc.text('Bill To:',L,byS);
+  var bL=[d.client_name,d.client_addr,d.client_city,d.client_att].filter(Boolean);
+  doc.setFont('helvetica','normal');doc.setTextColor('#333');
+  bL.forEach(function(ln,i){doc.text(ln,L,byS+(i+1)*LH);});
+  var billY=byS+bL.length*LH;
+  // For
+  var FX=xp(108);
+  doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor('#C0153A');
+  doc.text('For:',FX,byS);
+  var evDate=d.ev_dates?new Date(d.ev_dates+'T12:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}):d.inv_date;
+  var fL=[d.ev_service,evDate,d.ev_dur].filter(Boolean);
+  doc.setFont('helvetica','normal');doc.setTextColor('#333');
+  fL.forEach(function(ln,i){doc.text(ln,FX,byS+(i+1)*LH);});
+  var forY=byS+(fL.length+1)*LH+4;
+  // Table
+  var tT=Math.max(billY,forY)+24;
+  var tW=R-L,rH=18,hH=20;
+  var cA=58,cQ=34,cP=48,cD=tW-cP-cQ-cA;
+  var pX=L+cD+cP/2,qX=L+cD+cP+cQ/2;
+  doc.setDrawColor('#333');doc.setLineWidth(1.5);doc.rect(L,tT-hH,tW,hH,'S');
+  doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor('#333');
+  doc.text('DESCRIPTION',L+6,tT-7);doc.text('$/p',pX,tT-7,{align:'center'});
+  doc.text('Qty',qX,tT-7,{align:'center'});doc.text('AMOUNT',R-6,tT-7,{align:'right'});
+  doc.setLineWidth(0.5);
+  doc.line(L+cD,tT-hH,L+cD,tT);doc.line(L+cD+cP,tT-hH,L+cD+cP,tT);doc.line(L+cD+cP+cQ,tT-hH,L+cD+cP+cQ,tT);
+  var items=d.items||[];
+  items.forEach(function(it,idx){
+    var amt=getAmt(it);
+    var ry=tT+idx*rH;
+    if(idx%2===0){doc.setFillColor(254,240,243);doc.rect(L,ry,tW,rH,'F');}
+    doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor('#333');
+    doc.text((it.desc||'').substring(0,48),L+6,ry+12);
+    if(it.ppp!==''&&it.qty!==''){doc.text('$ '+parseFloat(it.ppp).toFixed(2),pX,ry+12,{align:'center'});doc.text(String(it.qty),qX,ry+12,{align:'center'});}
+    doc.text('$ '+amt.toFixed(2),R-6,ry+12,{align:'right'});
+    doc.setDrawColor('#E0E0E0');doc.setLineWidth(0.2);doc.line(L,ry,R,ry);
+  });
+  var bY=tT+items.length*rH;
+  doc.setDrawColor('#333');doc.setLineWidth(1.5);doc.rect(L,tT-hH,tW,hH+items.length*rH,'S');
+  // ── Totals block ────────────────────────────────────────────
+  var sub=items.reduce(function(s,it){return s+getAmt(it);},0);
+  var hst=sub*0.13,tot=sub+hst;
+  var pm={card:'Credit Card',cash:'Cash',cheque:'Cheque',etransfer:'E-Transfer',eft:'EFT'};
+  var payLabel=pm[en.pay_method]||en.pay_method||'';
+  var rdLabel=en.received_date?new Date(en.received_date+'T12:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}):'';
+
+  // Totals start below table
+  var TX=xp(120), ty=bY+28;
+
+  // HST note (small, grey, left side)
+  doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor('#aaa');
+  doc.text('HST TAX # 823586508 RT0001   |   Tax rate: 13%',L,ty+16);
+
+  // Subtotal / Tax / Total / Balance Due (right column)
+  doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor('#333');
+  doc.text('Subtotal',TX,ty);
+  doc.text('$ '+sub.toFixed(2),R,ty,{align:'right'});
+  doc.text('Tax total',TX,ty+16);
+  doc.text('$ '+hst.toFixed(2),R,ty+16,{align:'right'});
+  doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor('#000');
+  doc.text('Total',TX,ty+34);
+  doc.text('$ '+tot.toFixed(2),R,ty+34,{align:'right'});
+  doc.setDrawColor('#CCC');doc.setLineWidth(0.4);doc.line(TX,ty+38,R,ty+38);
+  doc.setTextColor('#1a8a4a');
+  doc.text('Balance Due',TX,ty+54);
+  doc.text('$ 0.00',R,ty+54,{align:'right'});
+
+  // ── PAID seal block (left side, below HST line, no overlap) ──
+  var sealTopY = ty + 70;  // starts well below Balance Due
+
+  if(typeof PAID_SEAL!=='undefined'){
+    var sealW=xp(52), sealH=xp(22);
+    var sealX=L;
+    doc.addImage(PAID_SEAL,'PNG',sealX,sealTopY,sealW,sealH);
+  }
+
+  // Payment Method - below seal
+  var afterSealY = sealTopY + (typeof PAID_SEAL!=='undefined'?xp(22):0) + 14;
+  if(payLabel){
+    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor('#333');
+    doc.text('Payment: '+payLabel, L, afterSealY);
+    afterSealY += 14;
+  }
+  // Payment date in red - below method
+  if(rdLabel){
+    doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor('#C0153A');
+    doc.text(rdLabel, L, afterSealY);
+    afterSealY += 18;
+  }
+
+  // ── Footer ────────────────────────────────────────────────────
+  var fy = afterSealY + 10;
+  doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor('#555');
+  doc.text('If you have any questions, contact Jeff Coates, (905) 906-8657',L,fy);
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor('#333');
+  doc.text('Thank you for your business!',PW/2,fy+18,{align:'center'});
+  var fn=((d.inv_num||'RCPT')+'-RECEIPT'+(d.client_name?' - '+d.client_name:'')).replace(/[^\w\s#-]/g,'_');
+  doc.save(fn+'.pdf');
+  toast('Receipt generated!');
+}
+
 function sendToCB(num){
   var en=iStatus.find(function(e){return e.inv_num===num;});
   if(!en)return;
@@ -757,7 +1199,11 @@ function sendToCB(num){
   if(i>=0)ledger[i]=d;else ledger.unshift(d);
   localStorage.setItem('cc_ledger',JSON.stringify(ledger));
   fbSave('ledger',d.inv_num,d);
-  updateStats();toast('Sent to Cash Book!');goTab('cash');
+  // Mark as sent to cashbook
+  en.in_cashbook=true;
+  localStorage.setItem('cc_istatus',JSON.stringify(iStatus));
+  fbSave('istatus',num,en);
+  updateStats();renderIS();toast('✓ Sent to Cash Book!');
 }
 function genLate(num){
   var en=iStatus.find(function(e){return e.inv_num===num;});
@@ -797,12 +1243,16 @@ function delContact(i){
 }
 function saveContact(d,src){
   if(!d.client_name&&!d.client_email)return;
-  var ex=contacts.findIndex(function(c){return c.email===d.client_email&&c.company===d.client_name;});
-  if(ex>=0)return;
-  var e={company:d.client_name||'',contact:d.client_att||'',email:d.client_email||'',source:src,date:new Date().toISOString().slice(0,10)};
-  contacts.unshift(e);
-  localStorage.setItem('cc_contacts',JSON.stringify(contacts));
-  fbSave('contacts',d.client_email||d.client_name,e);
+  // Save primary email
+  var emails=[d.client_email,d.client_email2,d.client_email3].filter(Boolean);
+  emails.forEach(function(em,i){
+    var ex=contacts.findIndex(function(c){return c.email===em&&c.company===d.client_name;});
+    if(ex>=0)return;
+    var e={company:d.client_name||'',contact:d.client_att||'',email:em,source:src,date:new Date().toISOString().slice(0,10)};
+    contacts.unshift(e);
+    fbSave('contacts',(em||d.client_name).replace(/[^a-zA-Z0-9]/g,'_')+(i>0?'_'+i:''),e);
+  });
+  if(emails.length>0)localStorage.setItem('cc_contacts',JSON.stringify(contacts));
 }
 function renderCT(){
   var el=document.getElementById('ct-body');
@@ -887,11 +1337,12 @@ function exportCSV(){
 // ─── CLEAR ───────────────────────────────────────────────────────
 function clr(p){
   if(!confirm('Clear all fields?'))return;
-  var ids=p==='i'?['i-num','i-po','i-cn','i-ca','i-city','i-catt','i-cemail','i-ed','i-edur','i-nop']:
-                  ['q-num','q-po','q-cn','q-ca','q-city','q-catt','q-cemail','q-ed','q-edur','q-nop'];
+  var ids=p==='i'?['i-num','i-po','i-cn','i-ca','i-city','i-catt','i-cemail','i-cemail2','i-cemail3','i-ed','i-edur','i-nop']:
+                  ['q-num','q-po','q-cn','q-ca','q-city','q-catt','q-cemail','q-cemail2','q-cemail3','q-ed','q-edur','q-nop'];
   ids.forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
   document.getElementById(p+'-date').value=new Date().toISOString().slice(0,10);
   var ne=document.getElementById(p+'-net');if(ne)ne.value='NET 30';
+  ['tstart-h','tstart-ap','tend-h','tend-ap'].forEach(function(f){var el=document.getElementById(p+'-'+f);if(el){if(f==='tstart-h')el.value='9';if(f==='tend-h')el.value='11';if(f.endsWith('ap'))el.value=f.startsWith('ts')?'AM':'PM';}});
   S[p].items=[{desc:'Travel fee',ppp:'',qty:'',amt:170}];
   S[p].shifts=[];
   renderItems(p);renderShifts(p);
