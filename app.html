@@ -1399,6 +1399,14 @@ function loadFirebase(){
 
 // Set logo as soon as page loads
 document.addEventListener('DOMContentLoaded', function(){
+  // Set favicon from logo
+  if(typeof LOGO_IMG !== 'undefined'){
+    var link = document.querySelector("link[rel*='icon']") || document.createElement('link');
+    link.type = 'image/png';
+    link.rel = 'shortcut icon';
+    link.href = LOGO_IMG;
+    document.head.appendChild(link);
+  }
   if(typeof LOGO_IMG !== 'undefined'){
     var ll = document.getElementById('ll');
     if(ll) ll.src = LOGO_IMG;
