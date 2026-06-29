@@ -1028,36 +1028,42 @@ function genISReport(){
   // Table header
   var hY=90,rH=20,hH=22;
   var cols={num:L,company:L+80,event:L+260,sent:L+390,total:R};
+  // 5 columns: Invoice # | Company | Invoice Date | HST (13%) | Total
+  // Total width = R - L ≈ 515pt. Allocate: num=90 | company=200 | date=100 | hst=65 | total=60
+  var cNum=L, cCompany=L+90, cDate=L+290, cHST=R-65, cTotal=R;
   doc.setFillColor(192,21,58);doc.rect(L,hY,tW,hH,'F');
   doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor('#fff');
-  doc.text('Invoice #',cols.num+4,hY+14);
-  doc.text('Company',cols.company+4,hY+14);
-  doc.text('Event Date',cols.event+4,hY+14);
-  doc.text('Sent Date',cols.sent+4,hY+14);
-  doc.text('Total',cols.total,hY+14,{align:'right'});
-  var y=hY+hH,grandTotal=0;
+  doc.text('Invoice #',cNum+4,hY+14);
+  doc.text('Company',cCompany+4,hY+14);
+  doc.text('Invoice Date',cDate+4,hY+14);
+  doc.text('HST (13%)',cHST,hY+14,{align:'right'});
+  doc.text('Total',cTotal,hY+14,{align:'right'});
+  var y=hY+hH,grandTotal=0,grandHST=0;
   filt.forEach(function(e,i){
     if(i%2===0){doc.setFillColor(254,240,243);doc.rect(L,y,tW,rH,'F');}
     doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor('#333');
-    doc.text((e.inv_num||'-').substring(0,14),cols.num+4,y+13);
-    doc.text((e.client_name||'-').substring(0,22),cols.company+4,y+13);
-    var evDate=(e.data&&e.data.ev_dates)?new Date(e.data.ev_dates+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):(e.send_date||'-');
-    doc.text(evDate,cols.event+4,y+13);
-    doc.text(e.send_date||'-',cols.sent+4,y+13);
-    var tot=e.total||0;grandTotal+=tot;
-    doc.text('$ '+tot.toFixed(2),cols.total,y+13,{align:'right'});
+    doc.text((e.inv_num||'-').substring(0,13),cNum+4,y+13);
+    doc.text((e.client_name||'-').substring(0,26),cCompany+4,y+13);
+    var invDate=e.send_date||'-';
+    doc.text(invDate,cDate+4,y+13);
+    var tot=e.total||0;
+    var hst=parseFloat((tot-tot/1.13).toFixed(2));
+    grandTotal+=tot;grandHST+=hst;
+    doc.text('$ '+hst.toFixed(2),cHST,y+13,{align:'right'});
+    doc.text('$ '+tot.toFixed(2),cTotal,y+13,{align:'right'});
     doc.setDrawColor('#eee');doc.setLineWidth(0.3);doc.line(L,y+rH,R,y+rH);
     y+=rH;
-    // New page if needed
     if(y>PH-80){doc.addPage();y=40;}
   });
-  // Total row
+  // Footer totals row
   y+=6;
-  doc.setDrawColor('#333');doc.setLineWidth(1);doc.line(L,y,R,y);y+=14;
-  doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor('#333');
-  doc.text('TOTAL ('+filt.length+' invoices)',L,y);
+  doc.setDrawColor('#333');doc.setLineWidth(1.2);doc.line(L,y,R,y);y+=15;
+  doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor('#333');
+  doc.text('TOTAL ('+filt.length+' invoice'+(filt.length!==1?'s':'')+')',cNum+4,y);
+  doc.setTextColor('#555');
+  doc.text('$ '+grandHST.toFixed(2),cHST,y,{align:'right'});
   doc.setTextColor('#C0153A');
-  doc.text('$ '+grandTotal.toFixed(2),R,y,{align:'right'});
+  doc.text('$ '+grandTotal.toFixed(2),cTotal,y,{align:'right'});
   // Footer
   doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor('#999');
   doc.text('Crazy Cravings Inc. | 845 Sawmill Rd, Ancaster | BL# 823586508',PW/2,PH-20,{align:'center'});
