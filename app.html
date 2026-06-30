@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Crazy Cravings">
 <title>Crazy Cravings</title>
 <script src="data.js"></script>
 <style>
@@ -356,7 +359,7 @@ tbody td{padding:6px 9px;vertical-align:middle}
     </div>
   </div>
   <div class="twrap">
-    <table><thead><tr><th>Status</th><th>Invoice #</th><th>Sent?</th><th>Company</th><th>Contact</th><th>Sent</th><th>Due</th><th>Received</th><th>Total</th><th>Payment</th><th>Actions</th></tr></thead>
+    <table><thead><tr><th>Status</th><th>Invoice #</th><th>Sent?</th><th>Company</th><th>Contact</th><th>Sent</th><th>Due</th><th>Received</th><th>Total</th><th>Payment</th><th>Bank</th><th>Actions</th></tr></thead>
     <tbody id="is-body"></tbody></table>
     <div id="is-empty" class="empty">No invoices yet. Generate an Invoice PDF to track it here.</div>
   </div>
@@ -947,6 +950,19 @@ function renderIS(){
       });
       t8.appendChild(ps);
     } else {t8.innerHTML='<span style="color:#ccc">--</span>';}
+    // Bank dropdown
+    var t8b=document.createElement('td');
+    if(paid){
+      var bankSel=document.createElement('select');bankSel.className='ss';
+      var banks=['FirstOntario','BMO','TD Bank'];
+      bankSel.innerHTML='<option value="">-- Select --</option>'+banks.map(function(b){return '<option value="'+b+'"'+(e.bank===b?' selected':'')+'>'+b+'</option>';}).join('');
+      bankSel.addEventListener('change',function(){
+        e.bank=this.value;
+        localStorage.setItem('cc_istatus',JSON.stringify(iStatus));
+        fbSave('istatus',e.inv_num,e);
+      });
+      t8b.appendChild(bankSel);
+    } else {t8b.innerHTML='<span style="color:#ccc">--</span>';}
     // Actions
     var t9=document.createElement('td');t9.style.cssText='display:flex;gap:4px;flex-wrap:wrap;padding:3px';
     var stSel=document.createElement('select');stSel.className='ss';
@@ -980,7 +996,7 @@ function renderIS(){
     var db=document.createElement('button');db.className='cvt o';db.textContent='🗑';
     db.addEventListener('click',function(){confirmDel(e.inv_num);});
     t9.appendChild(db);
-    [t0,t1,tSent,t2,t3,t4,t5,t6,t7,t8,t9].forEach(function(t){tr.appendChild(t);});
+    [t0,t1,tSent,t2,t3,t4,t5,t6,t7,t8,t8b,t9].forEach(function(t){tr.appendChild(t);});
     tbody.appendChild(tr);
   });
   // Update IS footer
@@ -1405,13 +1421,35 @@ function loadFirebase(){
 
 // Set logo as soon as page loads
 document.addEventListener('DOMContentLoaded', function(){
-  // Set favicon from logo
+  // Set favicon + apple touch icon from logo
   if(typeof LOGO_IMG !== 'undefined'){
-    var link = document.querySelector("link[rel*='icon']") || document.createElement('link');
+    // Standard favicon (browser tab)
+    var link = document.querySelector("link[rel='shortcut icon']") || document.createElement('link');
     link.type = 'image/png';
     link.rel = 'shortcut icon';
     link.href = LOGO_IMG;
     document.head.appendChild(link);
+
+    var link2 = document.createElement('link');
+    link2.rel = 'icon';
+    link2.type = 'image/png';
+    link2.href = LOGO_IMG;
+    document.head.appendChild(link2);
+
+    // Apple touch icon (iPhone "Add to Home Screen")
+    var sizes = ['180x180','167x167','152x152','120x120'];
+    sizes.forEach(function(sz){
+      var appleLink = document.createElement('link');
+      appleLink.rel = 'apple-touch-icon';
+      appleLink.setAttribute('sizes', sz);
+      appleLink.href = LOGO_IMG;
+      document.head.appendChild(appleLink);
+    });
+    // Default apple-touch-icon (no size specified, fallback)
+    var appleDefault = document.createElement('link');
+    appleDefault.rel = 'apple-touch-icon';
+    appleDefault.href = LOGO_IMG;
+    document.head.appendChild(appleDefault);
   }
   if(typeof LOGO_IMG !== 'undefined'){
     var ll = document.getElementById('ll');
