@@ -202,6 +202,20 @@ tbody td{padding:6px 9px;vertical-align:middle}
       <div class="sec"><h3>Number of Persons</h3>
         <div class="f"><label>Minimum Required</label><input id="q-nop" type="number" min="0" placeholder="0"></div>
       </div>
+      <div class="sec">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:600">
+            <input type="checkbox" id="q-hst-exempt" onchange="toggleHSTExempt('q')" style="width:16px;height:16px;cursor:pointer;accent-color:var(--red)">
+            HST Exempt
+          </label>
+          <span style="font-size:12px;color:var(--mut)">— removes 13% tax</span>
+        </div>
+        <div id="q-hst-exempt-field" style="display:none;margin-top:10px">
+          <div class="f"><label>Exemption ID Number</label>
+            <input id="q-hst-id" placeholder="e.g. 12345678RT" style="max-width:260px">
+          </div>
+        </div>
+      </div>
     </div>
   </div>
   <div class="acts">
@@ -300,6 +314,20 @@ tbody td{padding:6px 9px;vertical-align:middle}
       </div>
       <div class="sec"><h3>Number of Persons</h3>
         <div class="f"><label>Minimum Required</label><input id="i-nop" type="number" min="0" placeholder="0"></div>
+      </div>
+      <div class="sec">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:600">
+            <input type="checkbox" id="i-hst-exempt" onchange="toggleHSTExempt('i')" style="width:16px;height:16px;cursor:pointer;accent-color:var(--red)">
+            HST Exempt
+          </label>
+          <span style="font-size:12px;color:var(--mut)">— removes 13% tax</span>
+        </div>
+        <div id="i-hst-exempt-field" style="display:none;margin-top:10px">
+          <div class="f"><label>Exemption ID Number</label>
+            <input id="i-hst-id" placeholder="e.g. 12345678RT" style="max-width:260px">
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -447,6 +475,15 @@ function autoFillDesc(p){
   renderItems(p);
 }
 
+
+function toggleHSTExempt(p){
+  var cb=document.getElementById(p+'-hst-exempt');
+  var field=document.getElementById(p+'-hst-exempt-field');
+  if(!cb||!field)return;
+  field.style.display=cb.checked?'block':'none';
+  calcT(p);
+}
+
 function autoNum(p){
   var ed=document.getElementById(p+'-ed').value;
   if(!ed)return;
@@ -496,6 +533,15 @@ function autoFillDesc(p){
     S[p].items.push({desc:'Ice Cream Only',ppp:'',qty:'',amt:''});
   }
   renderItems(p);
+}
+
+
+function toggleHSTExempt(p){
+  var cb=document.getElementById(p+'-hst-exempt');
+  var field=document.getElementById(p+'-hst-exempt-field');
+  if(!cb||!field)return;
+  field.style.display=cb.checked?'block':'none';
+  calcT(p);
 }
 
 function autoNum(p){
@@ -625,9 +671,13 @@ function renderShifts(p){
 function fmt(n){return '$ '+parseFloat(n||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');}
 function calcT(p){
   var sub=S[p].items.reduce(function(s,it){return s+getAmt(it);},0);
-  var hst=sub*0.13,tot=sub+hst,cc=tot*1.03;
+  var cb=document.getElementById(p+'-hst-exempt');
+  var exempt=cb&&cb.checked;
+  var hst=exempt?0:sub*0.13;
+  var tot=sub+hst,cc=tot*1.03;
   document.getElementById(p+'-sub').textContent=fmt(sub);
-  document.getElementById(p+'-hst').textContent=fmt(hst);
+  var hstEl=document.getElementById(p+'-hst');
+  if(hstEl) hstEl.textContent=exempt?'Exempt':fmt(hst);
   document.getElementById(p+'-tot').textContent=fmt(tot);
   document.getElementById(p+'-cc').textContent=fmt(cc);
 }
@@ -639,6 +689,8 @@ function collect(p){
   var dv=g(p+'-date');
   var ds=dv?new Date(dv+'T12:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}):'';
   var sub=S[p].items.reduce(function(s,it){return s+getAmt(it);},0);
+  var hstEx=!!(document.getElementById(p+'-hst-exempt')&&document.getElementById(p+'-hst-exempt').checked);
+  var hstId=g(p+'-hst-id');
   return{
     inv_num:'#'+g(p+'-num').replace(/^#+/,''),
     inv_date:ds,inv_date_raw:dv,
@@ -652,9 +704,11 @@ function collect(p){
     ev_service:g(p+'-es'),ev_dates:g(p+'-ed'),ev_dur:g(p+'-edur'),
     ev_time:getTimeStr(p),
     ev_net:g(p+'-net')||'NET 30',
+    hst_exempt:hstEx,
+    hst_id:hstId,
     nop_min:g(p+'-nop'),
     shifts:JSON.parse(JSON.stringify(S[p].shifts)),
-    subtotal:sub,hst:sub*0.13,total:sub*1.13,cc_total:sub*1.13*1.03,
+    subtotal:sub,hst:hstEx?0:sub*0.13,total:hstEx?sub:sub*1.13,cc_total:hstEx?sub*1.03:sub*1.13*1.03,
     items:JSON.parse(JSON.stringify(S[p].items)),
     send_date:new Date().toISOString().slice(0,10),
     due_date:'',pay_method:'',received_date:''
@@ -745,16 +799,29 @@ function makePDF(d,isQ){
   doc.text('*Minimum Persons Required',L+6,nY+hH+rH-6);
   if(d.nop_min){doc.setFont('helvetica','bold');doc.text(String(d.nop_min),R-6,nY+hH+rH-6,{align:'right'});}
   // Totals
-  var hst=sub*0.13,tot=sub+hst,cc=tot*1.03,TX=xp(120),ty=nY+nH+44;
+  var hst=d.hst_exempt?0:sub*0.13,tot=sub+hst,cc=tot*1.03,TX=xp(120),ty=nY+nH+44;
   doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor('#333');
   doc.text('Subtotal',TX,ty);doc.text('$ '+sub.toFixed(2),R,ty,{align:'right'});
-  doc.text('Tax total',TX,ty+16);doc.text('$ '+hst.toFixed(2),R,ty+16,{align:'right'});
+  // HST line - exempt or normal
+  if(d.hst_exempt){
+    doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor('#1a8a4a');
+    doc.text('HST',TX,ty+16);doc.text('Exempt',R,ty+16,{align:'right'});
+    doc.setTextColor('#333');
+  } else {
+    doc.text('Tax total',TX,ty+16);doc.text('$ '+hst.toFixed(2),R,ty+16,{align:'right'});
+  }
   doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor('#000');
   doc.text('Total',TX,ty+34);doc.text('$ '+tot.toFixed(2),R,ty+34,{align:'right'});
   doc.setDrawColor('#CCC');doc.setLineWidth(0.4);doc.line(TX,ty+38,R,ty+38);
   doc.setTextColor('#C0153A');doc.text('Credit Card Pay *',TX,ty+54);doc.text('$ '+cc.toFixed(2),R,ty+54,{align:'right'});
   doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor('#999');
-  doc.text('HST TAX # 823586508 RT0001   |   Tax rate: 13%',L,ty+16);
+  // HST note line - show exemption ID or standard HST number
+  if(d.hst_exempt&&d.hst_id){
+    doc.setTextColor('#1a8a4a');
+    doc.text('HST Exempt  |  Exemption ID: '+d.hst_id,L,ty+16);
+  } else {
+    doc.text('HST TAX # 823586508 RT0001   |   Tax rate: 13%',L,ty+16);
+  }
   var fy=ty+82;
   [[false,'#C0153A','*If you are paying with credit card, there will be a 3% additional fee added to the balance.'],
    [true,'#333','Make all checks payable to Crazy Cravings or E-Transfer to info@crazycravings.ca'],
@@ -806,6 +873,10 @@ function fillInvoice(d){
   sv('i-cemail',d.client_email);sv('i-es',d.ev_service);sv('i-ed',d.ev_dates);
   sv('i-edur',d.ev_dur);sv('i-nop',d.nop_min);
   var ne=document.getElementById('i-net');if(ne&&d.ev_net)ne.value=d.ev_net;
+  var iCb=document.getElementById('i-hst-exempt');if(iCb)iCb.checked=!!d.hst_exempt;
+  var iField=document.getElementById('i-hst-exempt-field');if(iField)iField.style.display=d.hst_exempt?'block':'none';
+  var iHstId=document.getElementById('i-hst-id');if(iHstId)iHstId.value=d.hst_id||'';
+  calcT('i');
   if(d.ev_time){var tm=d.ev_time.match(/(\d+):00 (AM|PM) - (\d+):00 (AM|PM)/);if(tm){var sh=document.getElementById('i-tstart-h');var sa=document.getElementById('i-tstart-ap');var eh=document.getElementById('i-tend-h');var ea=document.getElementById('i-tend-ap');if(sh)sh.value=tm[1];if(sa)sa.value=tm[2];if(eh)eh.value=tm[3];if(ea)ea.value=tm[4];}}
   S['i'].items=JSON.parse(JSON.stringify(d.items||[]));
   S['i'].shifts=JSON.parse(JSON.stringify(d.shifts||[]));
@@ -1364,6 +1435,10 @@ function clr(p){
   ids.forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
   document.getElementById(p+'-date').value=new Date().toISOString().slice(0,10);
   var ne=document.getElementById(p+'-net');if(ne)ne.value='NET 30';
+  var hstCb=document.getElementById(p+'-hst-exempt');if(hstCb)hstCb.checked=false;
+  var hstField=document.getElementById(p+'-hst-exempt-field');if(hstField)hstField.style.display='none';
+  var hstId=document.getElementById(p+'-hst-id');if(hstId)hstId.value='';
+  calcT(p);
   ['tstart-h','tstart-ap','tend-h','tend-ap'].forEach(function(f){var el=document.getElementById(p+'-'+f);if(el){if(f==='tstart-h')el.value='9';if(f==='tend-h')el.value='11';if(f.endsWith('ap'))el.value=f.startsWith('ts')?'AM':'PM';}});
   S[p].items=[{desc:'Travel fee',ppp:'',qty:'',amt:170}];
   S[p].shifts=[];
