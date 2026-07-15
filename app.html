@@ -802,28 +802,19 @@ function makePDF(d,isQ){
   var hst=d.hst_exempt?0:sub*0.13,tot=sub+hst,cc=tot*1.03,TX=xp(120),ty=nY+nH+44;
   doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor('#333');
   doc.text('Subtotal',TX,ty);doc.text('$ '+sub.toFixed(2),R,ty,{align:'right'});
-  // Credit card surcharge line
-  if(isCard){
-    doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor('#333');
-    doc.text('Credit Card Surcharge (+3%)',TX,ty+16);
-    doc.text('$ '+(finalTot-tot).toFixed(2),R,ty+16,{align:'right'});
-  }
-  // HST line - exempt or normal (offset if card surcharge line added)
-  var hstOff=isCard?16:0;
+  // HST line
   if(d.hst_exempt){
-    doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor('#1a8a4a');
-    doc.text('HST',TX,ty+16+hstOff);doc.text('Exempt',R,ty+16+hstOff,{align:'right'});
+    doc.setTextColor('#1a8a4a');
+    doc.text('HST',TX,ty+16);doc.text('Exempt',R,ty+16,{align:'right'});
     doc.setTextColor('#333');
   } else {
-    doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor('#333');
-    doc.text('Tax total',TX,ty+16+hstOff);doc.text('$ '+hst.toFixed(2),R,ty+16+hstOff,{align:'right'});
+    doc.text('Tax total',TX,ty+16);doc.text('$ '+hst.toFixed(2),R,ty+16,{align:'right'});
   }
   doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor('#000');
-  doc.text('Total',TX,ty+34+hstOff);doc.text('$ '+finalTot.toFixed(2),R,ty+34,{align:'right'});
+  doc.text('Total',TX,ty+34);doc.text('$ '+tot.toFixed(2),R,ty+34,{align:'right'});
   doc.setDrawColor('#CCC');doc.setLineWidth(0.4);doc.line(TX,ty+38,R,ty+38);
   doc.setTextColor('#C0153A');doc.text('Credit Card Pay *',TX,ty+54);doc.text('$ '+cc.toFixed(2),R,ty+54,{align:'right'});
   doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor('#999');
-  // HST note line - show exemption ID or standard HST number
   if(d.hst_exempt&&d.hst_id){
     doc.setTextColor('#1a8a4a');
     doc.text('HST Exempt  |  Exemption ID: '+d.hst_id,L,ty+16);
