@@ -802,16 +802,24 @@ function makePDF(d,isQ){
   var hst=d.hst_exempt?0:sub*0.13,tot=sub+hst,cc=tot*1.03,TX=xp(120),ty=nY+nH+44;
   doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor('#333');
   doc.text('Subtotal',TX,ty);doc.text('$ '+sub.toFixed(2),R,ty,{align:'right'});
-  // HST line - exempt or normal
+  // Credit card surcharge line
+  if(isCard){
+    doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor('#333');
+    doc.text('Credit Card Surcharge (+3%)',TX,ty+16);
+    doc.text('$ '+(finalTot-tot).toFixed(2),R,ty+16,{align:'right'});
+  }
+  // HST line - exempt or normal (offset if card surcharge line added)
+  var hstOff=isCard?16:0;
   if(d.hst_exempt){
     doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor('#1a8a4a');
-    doc.text('HST',TX,ty+16);doc.text('Exempt',R,ty+16,{align:'right'});
+    doc.text('HST',TX,ty+16+hstOff);doc.text('Exempt',R,ty+16+hstOff,{align:'right'});
     doc.setTextColor('#333');
   } else {
-    doc.text('Tax total',TX,ty+16);doc.text('$ '+hst.toFixed(2),R,ty+16,{align:'right'});
+    doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor('#333');
+    doc.text('Tax total',TX,ty+16+hstOff);doc.text('$ '+hst.toFixed(2),R,ty+16+hstOff,{align:'right'});
   }
   doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor('#000');
-  doc.text('Total',TX,ty+34);doc.text('$ '+tot.toFixed(2),R,ty+34,{align:'right'});
+  doc.text('Total',TX,ty+34+hstOff);doc.text('$ '+finalTot.toFixed(2),R,ty+34,{align:'right'});
   doc.setDrawColor('#CCC');doc.setLineWidth(0.4);doc.line(TX,ty+38,R,ty+38);
   doc.setTextColor('#C0153A');doc.text('Credit Card Pay *',TX,ty+54);doc.text('$ '+cc.toFixed(2),R,ty+54,{align:'right'});
   doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor('#999');
@@ -1168,10 +1176,9 @@ function genReceipt(num){
   var PW=595.28,PH=841.89;
   function xp(mm){return mm*(PW/210);}
   function yp(mm){return mm*(PH/297);}
-  // Add receipt template background
   if(typeof RECEIPT_TMPL!=='undefined') doc.addImage(RECEIPT_TMPL,'PNG',0,0,PW,PH);
   var L=xp(18),R=xp(185),LH=15;
-  // Header - PAYMENT RECEIPT
+  // Header
   doc.setFont('helvetica','bold');doc.setFontSize(18);doc.setTextColor('#C0153A');
   doc.text('PAYMENT RECEIPT',R,yp(58),{align:'right'});
   doc.setFont('helvetica','normal');doc.setFontSize(13);doc.setTextColor('#333');
@@ -1219,59 +1226,67 @@ function genReceipt(num){
   });
   var bY=tT+items.length*rH;
   doc.setDrawColor('#333');doc.setLineWidth(1.5);doc.rect(L,tT-hH,tW,hH+items.length*rH,'S');
-  // ── Totals block ────────────────────────────────────────────
+  // ── Totals ────────────────────────────────────────────────────
   var sub=items.reduce(function(s,it){return s+getAmt(it);},0);
-  var hst=sub*0.13,tot=sub+hst;
-  var pm={card:'Credit Card',cash:'Cash',cheque:'Cheque',etransfer:'E-Transfer',eft:'EFT'};
+  var hstExempt=d.hst_exempt||false;
+  var hst=hstExempt?0:sub*0.13;
+  var tot=sub+hst;
+  var isCard=en.pay_method==='card';
+  var finalTot=isCard?(en.cc_total||Math.round(tot*1.03*100)/100):tot;
+  var pm={card:'Credit Card (+3%)',cash:'Cash',cheque:'Cheque',etransfer:'E-Transfer',eft:'EFT'};
   var payLabel=pm[en.pay_method]||en.pay_method||'';
   var rdLabel=en.received_date?new Date(en.received_date+'T12:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}):'';
-
-  // Totals start below table
-  var TX=xp(120), ty=bY+28;
-
-  // HST note (small, grey, left side)
+  var TX=xp(120),ty=bY+28;
+  // HST note left side
   doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor('#aaa');
-  doc.text('HST TAX # 823586508 RT0001   |   Tax rate: 13%',L,ty+16);
-
-  // Subtotal / Tax / Total / Balance Due (right column)
-  doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor('#333');
-  doc.text('Subtotal',TX,ty);
-  doc.text('$ '+sub.toFixed(2),R,ty,{align:'right'});
-  doc.text('Tax total',TX,ty+16);
-  doc.text('$ '+hst.toFixed(2),R,ty+16,{align:'right'});
-  doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor('#000');
-  doc.text('Total',TX,ty+34);
-  doc.text('$ '+tot.toFixed(2),R,ty+34,{align:'right'});
-  doc.setDrawColor('#CCC');doc.setLineWidth(0.4);doc.line(TX,ty+38,R,ty+38);
-  doc.setTextColor('#1a8a4a');
-  doc.text('Balance Due',TX,ty+54);
-  doc.text('$ 0.00',R,ty+54,{align:'right'});
-
-  // ── PAID seal block (left side, below HST line, no overlap) ──
-  var sealTopY = ty + 70;  // starts well below Balance Due
-
-  if(typeof PAID_SEAL!=='undefined'){
-    var sealW=xp(52), sealH=xp(22);
-    var sealX=L;
-    doc.addImage(PAID_SEAL,'PNG',sealX,sealTopY,sealW,sealH);
+  if(hstExempt&&d.hst_id){
+    doc.setTextColor('#1a8a4a');
+    doc.text('HST Exempt  |  Exemption ID: '+d.hst_id,L,ty+16);
+  } else if(!hstExempt){
+    doc.text('HST TAX # 823586508 RT0001   |   Tax rate: 13%',L,ty+16);
   }
-
-  // Payment Method - below seal
-  var afterSealY = sealTopY + (typeof PAID_SEAL!=='undefined'?xp(22):0) + 14;
+  // Right column totals
+  var row=ty;
+  doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor('#333');
+  doc.text('Subtotal',TX,row);doc.text('$ '+sub.toFixed(2),R,row,{align:'right'});row+=16;
+  // Credit card surcharge line
+  if(isCard){
+    doc.text('Credit Card Surcharge (+3%)',TX,row);
+    doc.text('$ '+(finalTot-tot).toFixed(2),R,row,{align:'right'});row+=16;
+  }
+  // HST line
+  if(hstExempt){
+    doc.setTextColor('#1a8a4a');
+    doc.text('HST',TX,row);doc.text('Exempt',R,row,{align:'right'});
+    doc.setTextColor('#333');row+=16;
+  } else {
+    doc.text('Tax total',TX,row);doc.text('$ '+hst.toFixed(2),R,row,{align:'right'});row+=16;
+  }
+  // Total
+  doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor('#000');
+  row+=4;
+  doc.text('Total',TX,row);doc.text('$ '+finalTot.toFixed(2),R,row,{align:'right'});row+=6;
+  doc.setDrawColor('#CCC');doc.setLineWidth(0.4);doc.line(TX,row,R,row);row+=12;
+  // Balance Due
+  doc.setTextColor('#1a8a4a');
+  doc.text('Balance Due',TX,row);doc.text('$ 0.00',R,row,{align:'right'});
+  // ── PAID seal + payment info ───────────────────────────────────
+  var sealTopY=row+24;
+  if(typeof PAID_SEAL!=='undefined'){
+    var sealW=xp(52),sealH=xp(22);
+    doc.addImage(PAID_SEAL,'PNG',L,sealTopY,sealW,sealH);
+  }
+  var afterSealY=sealTopY+(typeof PAID_SEAL!=='undefined'?xp(22):0)+14;
   if(payLabel){
     doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor('#333');
-    doc.text('Payment: '+payLabel, L, afterSealY);
-    afterSealY += 14;
+    doc.text('Payment: '+payLabel,L,afterSealY);afterSealY+=14;
   }
-  // Payment date in red - below method
   if(rdLabel){
     doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor('#C0153A');
-    doc.text(rdLabel, L, afterSealY);
-    afterSealY += 18;
+    doc.text(rdLabel,L,afterSealY);afterSealY+=18;
   }
-
-  // ── Footer ────────────────────────────────────────────────────
-  var fy = afterSealY + 10;
+  // Footer
+  var fy=afterSealY+10;
   doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor('#555');
   doc.text('If you have any questions, contact Jeff Coates, (905) 906-8657',L,fy);
   doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor('#333');
