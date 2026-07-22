@@ -79,7 +79,7 @@ tbody td{padding:6px 9px;vertical-align:middle}
 .cvt{padding:3px 8px;color:#fff;border:none;border-radius:4px;font-size:11px;cursor:pointer;white-space:nowrap}
 .cvt.r{background:var(--red)}.cvt.g{background:#1a8a4a}.cvt.o{background:#ef4444}.cvt.s{background:#555}
 .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:3px;vertical-align:middle}
-.dot.g{background:#1a8a4a}.dot.y{background:#f59e0b}.dot.r{background:#ef4444}
+.dot.g{background:#1a8a4a}.dot.y{background:#f59e0b}.dot.r{background:#ef4444}.dot.b{background:#888}
 .empty{text-align:center;padding:28px;color:var(--mut)}
 .toast{display:none;position:fixed;bottom:18px;right:18px;background:#1a8a4a;color:#fff;padding:9px 16px;border-radius:7px;font-size:13px;font-weight:600;z-index:300}
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center}
@@ -363,6 +363,7 @@ tbody td{padding:6px 9px;vertical-align:middle}
       <option value="unpaid">🟡 Unpaid</option>
       <option value="overdue">🔴 Overdue</option>
       <option value="paid">🟢 Paid</option>
+      <option value="replaced">🔁 Replaced</option>
     </select>
       <select id="is-period" onchange="renderIS()" style="padding:6px 9px;border:1px solid var(--bd);border-radius:5px;font-size:13px">
         <option value="">All Time</option>
@@ -953,6 +954,8 @@ function renderIS(){
       else if(period.startsWith('y-'))matchPeriod=yr===period.slice(2);
     }
     if(!matchSearch||!matchPeriod)return false;
+    // Hide replaced by default unless filter explicitly selects it
+    if(e.status==='replaced'&&f!=='replaced')return false;
     if(!f)return true;
     if(f==='overdue')return ov;
     if(f==='unpaid')return e.status==='unpaid'&&!ov;
@@ -979,10 +982,15 @@ function renderIS(){
   tbody.innerHTML='';
   filt.forEach(function(e){
     var days=daysOver(e.due_date),paid=e.status==='paid',ov=!paid&&days>0;
+    var replaced=e.status==='replaced';
     var tr=document.createElement('tr');
+    if(replaced)tr.style.opacity='0.5';
     // Status
     var t0=document.createElement('td');
-    t0.innerHTML='<span class="dot '+(paid?'g':ov?'r':'y')+'"></span><span style="font-size:11px;color:'+(paid?'#1a8a4a':ov?'#ef4444':'#f59e0b')+'">'+(paid?'Paid':ov?'Overdue('+days+'d)':'Unpaid')+'</span>';
+    var dotCls=paid?'g':ov?'r':replaced?'b':'y';
+    var statusLabel=paid?'Paid':ov?'Overdue('+days+'d)':replaced?'Replaced':'Unpaid';
+    var statusColor=paid?'#1a8a4a':ov?'#ef4444':replaced?'#888':'#f59e0b';
+    t0.innerHTML='<span class="dot '+dotCls+'"></span><span style="font-size:11px;color:'+statusColor+'">'+statusLabel+'</span>';
     var t1=document.createElement('td');t1.innerHTML='<strong>'+(e.inv_num||'-')+'</strong>';
     // Sent? dropdown
     var tSent=document.createElement('td');
@@ -1036,7 +1044,7 @@ function renderIS(){
     // Actions
     var t9=document.createElement('td');t9.style.cssText='display:flex;gap:4px;flex-wrap:wrap;padding:3px';
     var stSel=document.createElement('select');stSel.className='ss';
-    stSel.innerHTML='<option value="unpaid"'+(e.status==='unpaid'?' selected':'')+'>Unpaid</option><option value="paid"'+(e.status==='paid'?' selected':'')+'>Paid</option>';
+    stSel.innerHTML='<option value="unpaid"'+(e.status==='unpaid'?' selected':'')+'>Unpaid</option><option value="paid"'+(e.status==='paid'?' selected':'')+'>Paid</option><option value="replaced"'+(e.status==='replaced'?' selected':'')+'>Replaced</option>';
     stSel.addEventListener('change',function(){
       e.status=this.value;localStorage.setItem('cc_istatus',JSON.stringify(iStatus));fbSave('istatus',e.inv_num,e);renderIS();
     });
@@ -1072,9 +1080,10 @@ function renderIS(){
   // Update IS footer
   var isFC=document.getElementById('is-footer-count');
   var isFT=document.getElementById('is-footer-total');
-  if(isFC) isFC.textContent=filt.length+' invoice'+(filt.length!==1?'s':'');
+  var filtActive=filt.filter(function(e){return e.status!=='replaced';});
+  if(isFC) isFC.textContent=filtActive.length+' invoice'+(filtActive.length!==1?'s':'');
   if(isFT){
-    var gTot=filt.reduce(function(s,e){return s+(e.total||0);},0);
+    var gTot=filtActive.reduce(function(s,e){return s+(e.total||0);},0);
     isFT.textContent='Total: $ '+gTot.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
   }
 }
@@ -1086,6 +1095,7 @@ function genISReport(){
   var isS=(document.getElementById('is-search')||{value:''}).value.toLowerCase();
   var period=(document.getElementById('is-period')||{value:''}).value;
   var filt=iStatus.filter(function(e){
+    if(e.status==='replaced')return false; // never include replaced in report
     var ov=e.status==='unpaid'&&daysOver(e.due_date)>0;
     var matchSearch=!isS||(e.inv_num||'').toLowerCase().includes(isS)||(e.client_name||'').toLowerCase().includes(isS)||(e.client_att||'').toLowerCase().includes(isS);
     var matchPeriod=true;
@@ -1307,10 +1317,71 @@ function sendToCB(num){
 function genLate(num){
   var en=iStatus.find(function(e){return e.inv_num===num;});
   if(!en)return;
+
+  // ── Accumulative 3% late fee ───────────────────────────────────
+  // Running total starts from original invoice total
+  // Each subsequent late fee compounds on the previous running total
+  var originalTotal=parseFloat((en.total||0).toFixed(2));
+
+  // Check how many late invoices already exist for this invoice
+  var baseNum=en.inv_num.replace(/-LATE\d*$/,'');
+  var lateCount=iStatus.filter(function(x){
+    return x.inv_num&&x.inv_num.indexOf(baseNum+'-LATE')===0;
+  }).length;
+
+  // Calculate compounded running total
+  var runningTotal=originalTotal;
+  for(var m=0;m<lateCount;m++){
+    runningTotal=parseFloat((runningTotal+runningTotal*0.03).toFixed(2));
+  }
+  var newFee=parseFloat((runningTotal*0.03).toFixed(2));
+  var newRunningTotal=parseFloat((runningTotal+newFee).toFixed(2));
+
+  // Month label
+  var monthLabel='';
+  if(en.due_date){
+    var due=new Date(en.due_date+'T12:00:00');
+    var from=new Date(due);from.setMonth(from.getMonth()+lateCount);
+    var to=new Date(due);to.setMonth(to.getMonth()+lateCount+1);
+    var mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    monthLabel=' ('+mo[from.getMonth()]+' 1 → '+mo[to.getMonth()]+' 1)';
+  }
+
+  // Build invoice with ALL original items + late fee line appended
   var d=JSON.parse(JSON.stringify(en.data));
-  d.items=d.items.map(function(it){var a=getAmt(it);return{desc:it.desc+' (+3%)',ppp:'',qty:'',amt:parseFloat((a*1.03).toFixed(2))};});
-  d.inv_num=d.inv_num.replace(/-LATE$/,'')+'-LATE';
-  fillInvoice(d);goTab('invoice');toast('Late invoice (+3%) ready - review and generate PDF.');
+  // Remove any previous late fee lines to avoid duplicates
+  d.items=d.items.filter(function(it){
+    return !(it.desc&&it.desc.indexOf('LATE FEE @3%')===0);
+  });
+  // Add the new late fee line
+  d.items.push({
+    desc:'LATE FEE @3%'+monthLabel+' on outstanding balance of $ '+runningTotal.toFixed(2),
+    ppp:'',qty:'',
+    amt:newFee
+  });
+  d.hst_exempt=false;
+  d.hst_id='';
+  d.inv_num=baseNum+'-LATE'+(lateCount+1);
+
+  // Mark original invoice as "replaced"
+  en.status='replaced';
+  en.replaced_by=d.inv_num;
+  localStorage.setItem('cc_istatus',JSON.stringify(iStatus));
+  fbSave('istatus',en.inv_num,en);
+
+  fillInvoice(d);
+
+  // Uncheck HST exempt (original items have HST)
+  var cb=document.getElementById('i-hst-exempt');
+  var field=document.getElementById('i-hst-exempt-field');
+  var idEl=document.getElementById('i-hst-id');
+  if(cb){cb.checked=false;}
+  if(field){field.style.display='none';}
+  if(idEl){idEl.value='';}
+  calcT('i');
+
+  goTab('invoice');
+  toast('Late Fee $ '+newFee.toFixed(2)+' | No HST (financial charge) | New balance: $ '+newRunningTotal.toFixed(2));
 }
 function confirmDel(num){
   var ov=document.createElement('div');
