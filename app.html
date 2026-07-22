@@ -809,7 +809,8 @@ function makePDF(d,isQ){
   doc.setFont('helvetica','normal');doc.setFontSize(8.5);
   doc.text('*Minimum Persons Required',L+6,nY+hH+rH-6);
   if(d.nop_min){doc.setFont('helvetica','bold');doc.text(String(d.nop_min),R-6,nY+hH+rH-6,{align:'right'});}
-  // Totals
+  // Totals - split taxable vs late fee items for correct HST calc
+  var taxablePDF=d.items.filter(function(it){return !(it.desc&&it.desc.indexOf('LATE FEE @3%')===0);}).reduce(function(s,it){return s+getAmt(it);},0);
   var hst=d.hst_exempt?0:taxablePDF*0.13,tot=sub+hst,cc=tot*1.03,TX=xp(120),ty=nY+nH+44;
   doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor('#333');
   doc.text('Subtotal',TX,ty);doc.text('$ '+sub.toFixed(2),R,ty,{align:'right'});
