@@ -671,10 +671,15 @@ function renderShifts(p){
 // ─── TOTALS ──────────────────────────────────────────────────────
 function fmt(n){return '$ '+parseFloat(n||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');}
 function calcT(p){
-  var sub=S[p].items.reduce(function(s,it){return s+getAmt(it);},0);
   var cb=document.getElementById(p+'-hst-exempt');
   var exempt=cb&&cb.checked;
-  var hst=exempt?0:sub*0.13;
+  // Split items: taxable vs late fees (exempt from HST)
+  var taxable=S[p].items.filter(function(it){return !(it.desc&&it.desc.indexOf('LATE FEE @3%')===0);});
+  var lateFees=S[p].items.filter(function(it){return it.desc&&it.desc.indexOf('LATE FEE @3%')===0;});
+  var taxableSub=taxable.reduce(function(s,it){return s+getAmt(it);},0);
+  var lateFeeSub=lateFees.reduce(function(s,it){return s+getAmt(it);},0);
+  var sub=taxableSub+lateFeeSub;
+  var hst=exempt?0:taxableSub*0.13; // HST only on taxable items, NOT on late fees
   var tot=sub+hst,cc=tot*1.03;
   document.getElementById(p+'-sub').textContent=fmt(sub);
   var hstEl=document.getElementById(p+'-hst');
@@ -692,6 +697,11 @@ function collect(p){
   var sub=S[p].items.reduce(function(s,it){return s+getAmt(it);},0);
   var hstEx=!!(document.getElementById(p+'-hst-exempt')&&document.getElementById(p+'-hst-exempt').checked);
   var hstId=g(p+'-hst-id');
+  // Late fee items are exempt from HST (CRA financial charges rule)
+  var taxableItems=S[p].items.filter(function(it){return !(it.desc&&it.desc.indexOf('LATE FEE @3%')===0);});
+  var lateFeeItems=S[p].items.filter(function(it){return it.desc&&it.desc.indexOf('LATE FEE @3%')===0;});
+  var taxableSub=taxableItems.reduce(function(s,it){return s+getAmt(it);},0);
+  var lateFeeSub=lateFeeItems.reduce(function(s,it){return s+getAmt(it);},0);
   return{
     inv_num:'#'+g(p+'-num').replace(/^#+/,''),
     inv_date:ds,inv_date_raw:dv,
@@ -709,7 +719,7 @@ function collect(p){
     hst_id:hstId,
     nop_min:g(p+'-nop'),
     shifts:JSON.parse(JSON.stringify(S[p].shifts)),
-    subtotal:sub,hst:hstEx?0:sub*0.13,total:hstEx?sub:sub*1.13,cc_total:hstEx?sub*1.03:sub*1.13*1.03,
+    subtotal:taxableSub+lateFeeSub,hst:hstEx?0:taxableSub*0.13,total:hstEx?(taxableSub+lateFeeSub):(taxableSub*1.13+lateFeeSub),cc_total:hstEx?(taxableSub+lateFeeSub)*1.03:(taxableSub*1.13+lateFeeSub)*1.03,
     items:JSON.parse(JSON.stringify(S[p].items)),
     send_date:new Date().toISOString().slice(0,10),
     due_date:'',pay_method:'',received_date:''
@@ -800,7 +810,7 @@ function makePDF(d,isQ){
   doc.text('*Minimum Persons Required',L+6,nY+hH+rH-6);
   if(d.nop_min){doc.setFont('helvetica','bold');doc.text(String(d.nop_min),R-6,nY+hH+rH-6,{align:'right'});}
   // Totals
-  var hst=d.hst_exempt?0:sub*0.13,tot=sub+hst,cc=tot*1.03,TX=xp(120),ty=nY+nH+44;
+  var hst=d.hst_exempt?0:taxablePDF*0.13,tot=sub+hst,cc=tot*1.03,TX=xp(120),ty=nY+nH+44;
   doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor('#333');
   doc.text('Subtotal',TX,ty);doc.text('$ '+sub.toFixed(2),R,ty,{align:'right'});
   // HST line
