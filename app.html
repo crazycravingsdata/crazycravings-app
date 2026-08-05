@@ -791,14 +791,11 @@ function calcT(p){
   var deposit=depEl?(parseFloat(depEl.value)||0):0;
   var balance=Math.max(tot-deposit,0);
   var balRow=document.getElementById(p+'-bal-row');
-  var ccLabel=document.getElementById(p+'-cc-label');
   if(deposit>0){
     if(balRow)balRow.style.display='flex';
     document.getElementById(p+'-bal').textContent=fmt(balance);
-    if(ccLabel)ccLabel.textContent='Credit Card Pay on Balance (+3%)';
   } else {
     if(balRow)balRow.style.display='none';
-    if(ccLabel)ccLabel.textContent='Credit Card Pay (+3%)';
   }
   var cc=balance*1.03;
   document.getElementById(p+'-cc').textContent=fmt(cc);
@@ -960,7 +957,7 @@ function makePDF(d,isQ){
     ccY=ty+94;fyBase=ty+122;
   }
   doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor('#C0153A');
-  doc.text(hasDeposit?'Credit Card Pay on Balance *':'Credit Card Pay *',TX,ccY);doc.text('$ '+cc.toFixed(2),R,ccY,{align:'right'});
+  doc.text('Credit Card Pay *',TX,ccY);doc.text('$ '+cc.toFixed(2),R,ccY,{align:'right'});
   doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor('#999');
   if(d.hst_exempt&&d.hst_id){
     doc.setTextColor('#1a8a4a');
