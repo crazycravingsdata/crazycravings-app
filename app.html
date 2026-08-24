@@ -136,6 +136,18 @@ tbody td{padding:8px 11px;vertical-align:middle}
 .seg-btn.on{background:linear-gradient(120deg,var(--red),var(--red-dk));color:#fff;box-shadow:0 2px 8px rgba(192,21,58,.25)}
 .seg-btn:hover:not(.on){background:var(--bg)}
 .chart-grid{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;max-width:1100px;margin-bottom:12px}
+.ct-layout{display:grid;grid-template-columns:300px 1fr;gap:16px;max-width:1200px;align-items:start}
+.ct-list-pane{background:var(--card);border-radius:var(--rad);border:1px solid var(--bd);box-shadow:var(--sh);max-height:660px;overflow-y:auto}
+.ct-item{padding:12px 14px;border-bottom:1px solid #f2f2f6;cursor:pointer;transition:background .12s var(--ease);border-left:3px solid transparent}
+.ct-item:hover{background:var(--red-lt)}
+.ct-item.active{background:var(--red-lt);border-left-color:var(--red)}
+.ct-item .ctn{font-weight:700;font-size:13px;color:var(--txt)}
+.ct-item .cts{font-size:11px;color:var(--mut);margin-top:2px}
+.ct-detail-pane{background:var(--card);border-radius:var(--rad);border:1px solid var(--bd);box-shadow:var(--sh);padding:22px;min-height:300px}
+.ct-detail-pane .f label{font-weight:700;text-transform:uppercase;font-size:9.5px;letter-spacing:.05em}
+.ct-detail-pane input.editin{border:1.5px solid var(--bd);padding:7px 9px;border-radius:var(--rad-xs)}
+.ct-detail-pane input.editin:focus{border-color:var(--red);box-shadow:0 0 0 3px var(--red-lt)}
+@media(max-width:800px){.ct-layout{grid-template-columns:1fr}.ct-list-pane{max-height:280px}}
 .chart-card{margin-bottom:0}
 .chart-wrap{position:relative;height:240px}
 @media(max-width:700px){.grid{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}.panel{padding:14px 16px}.chart-grid{grid-template-columns:1fr}}
@@ -194,6 +206,23 @@ tbody td{padding:8px 11px;vertical-align:middle}
       <button class="seg-btn" data-p="12" onclick="setDashPeriod(12)">12 Months</button>
       <button class="seg-btn" data-p="0" onclick="setDashPeriod(0)">All Time</button>
     </div>
+    <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">
+      <select id="dash-client-select" onchange="setDashClient(this.value)" style="padding:8px 10px;border:1.5px solid var(--bd);border-radius:var(--rad-xs);font-size:12px;background:#fff;outline:none;max-width:160px">
+        <option value="">All Clients</option>
+      </select>
+      <select id="dash-month-select" onchange="setDashCustomPeriod(this.value)" style="padding:8px 10px;border:1.5px solid var(--bd);border-radius:var(--rad-xs);font-size:12px;background:#fff;outline:none">
+        <option value="">Month / Quarter / Year...</option>
+      </select>
+      <span style="color:var(--mut);font-size:11px">or</span>
+      <input type="date" id="dash-from" title="From" style="padding:7px 9px;border:1.5px solid var(--bd);border-radius:var(--rad-xs);font-size:12px">
+      <span style="color:var(--mut);font-size:11px">→</span>
+      <input type="date" id="dash-to" title="To" style="padding:7px 9px;border:1.5px solid var(--bd);border-radius:var(--rad-xs);font-size:12px">
+      <button class="ab" onclick="applyDashRange()" style="border-style:solid;padding:7px 12px">Apply</button>
+    </div>
+  </div>
+  <div id="dash-active-filter" style="display:none;max-width:1400px;margin-bottom:12px;font-size:12px;color:var(--mut)">
+    Showing: <b id="dash-active-filter-label" style="color:var(--txt)"></b>
+    <a href="#" onclick="clearDashFilters();return false;" style="color:var(--red);font-weight:600;margin-left:8px">Clear filter</a>
   </div>
   <div class="stats">
     <div class="sc"><div class="sl">Total Billed</div><div class="sv" id="dash-total">$ 0</div></div>
@@ -364,7 +393,9 @@ tbody td{padding:8px 11px;vertical-align:middle}
       <div class="sec"><h3>Invoice Information</h3>
         <div class="r2">
           <div class="f"><label>Invoice Number</label>
-            <div class="pfx"><span>#</span><input id="i-num" value="INV-001"></div></div>
+            <div class="pfx"><span>#</span><input id="i-num" value="INV-001" oninput="checkInvoiceNumLive()"></div>
+            <div id="i-num-warn" style="display:none;color:#ef4444;font-size:11px;font-weight:600;margin-top:4px">⚠ This invoice number is already in use</div>
+          </div>
           <div class="f"><label>Invoice Date</label><input id="i-date" type="date"></div>
         </div>
         <div class="f"><label>PO# <small style="color:#aaa">optional</small></label><input id="i-po" placeholder="PO-45678"></div>
@@ -431,7 +462,7 @@ tbody td{padding:8px 11px;vertical-align:middle}
   <div class="acts">
     <button class="br" onclick="genPDF('i',false)">📄 Generate Invoice PDF</button>
     <button class="bgr" onclick="saveBook()">📊 Save to Cash Book</button>
-    <button class="bg" onclick="pdfAndSave()">PDF + Save</button>
+    <button class="bg" onclick="emailInvoice('i')" style="background:#2563eb;color:#fff;border-color:#2563eb">✉ Email Invoice</button>
     <button class="bg" onclick="clr('i')">Clear</button>
   </div>
 </div>
@@ -469,6 +500,7 @@ tbody td{padding:8px 11px;vertical-align:middle}
         </optgroup>
       </select>
       <button onclick="genISReport()" style="padding:6px 12px;background:#555;color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-weight:600">📊 Report</button>
+      <button onclick="recalcDueDates()" title="Recompute due dates using each invoice's NET terms (15/30/45/60 days)" style="padding:6px 12px;background:#b8770a;color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-weight:600">🔧 Fix Due Dates</button>
     </div>
   </div>
   <div class="twrap wide">
@@ -499,14 +531,20 @@ tbody td{padding:8px 11px;vertical-align:middle}
   <div class="tbar" style="justify-content:space-between">
     <h2 style="font-size:15px;font-weight:700">Contacts</h2>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      <input id="ct-search" type="text" placeholder="🔎 Search company, contact, email, source, date..." oninput="renderCT()" style="width:280px">
+      <input id="ct-search" type="text" placeholder="🔎 Search clients, contacts, emails..." oninput="renderCT()" style="width:260px">
+      <button onclick="addNewClient()" style="padding:8px 14px;background:linear-gradient(120deg,#1a8a4a,#136536);color:#fff;border:none;border-radius:var(--rad-xs);cursor:pointer;font-size:12px;font-weight:600">+ New Client</button>
       <button onclick="exportContacts()" style="padding:8px 14px;background:linear-gradient(120deg,var(--red),var(--red-dk));color:#fff;border:none;border-radius:var(--rad-xs);cursor:pointer;font-size:12px;font-weight:600">⬇ Export CSV</button>
     </div>
   </div>
-  <div class="twrap">
-    <table><thead><tr><th>Company</th><th>Contact</th><th>Email</th><th>Source</th><th>Date</th><th></th></tr></thead>
-    <tbody id="ct-body"></tbody></table>
-    <div id="ct-empty" class="empty">No contacts yet. Collected from Quote and Invoice forms.</div>
+  <div class="ct-layout">
+    <div class="ct-list-pane">
+      <div id="ct-list"></div>
+      <div id="ct-empty" class="empty">No contacts yet. Collected from Quote and Invoice forms.</div>
+    </div>
+    <div class="ct-detail-pane">
+      <div id="ct-detail-empty" class="empty">Select a client from the list to view and edit their details.</div>
+      <div id="ct-detail-content" style="display:none"></div>
+    </div>
   </div>
 </div>
 
@@ -738,6 +776,7 @@ function getAmt(it){
   return parseFloat(it.amt)||0;
 }
 function esc(v){return String(v||'').replace(/"/g,'&quot;');}
+function jsEsc(v){return String(v||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
 function renderItems(p){
   var el=document.getElementById(p+'-items');
   if(!el)return;
@@ -845,14 +884,65 @@ function collect(p){
 }
 
 // ─── PDF ─────────────────────────────────────────────────────────
+function findInvoiceClash(num){
+  return iStatus.find(function(x){return x.inv_num===num;})||null;
+}
+function checkInvoiceNumLive(){
+  var el=document.getElementById('i-num');
+  var warn=document.getElementById('i-num-warn');
+  if(!el||!warn)return;
+  var num='#'+el.value.replace(/^#+/,'');
+  var clash=(num!==editingInvoiceNum)&&findInvoiceClash(num);
+  warn.style.display=clash?'block':'none';
+  el.style.borderColor=clash?'#ef4444':'';
+}
+function guardInvoiceNum(d){
+  if(d.inv_num===editingInvoiceNum)return true; // regenerating the same invoice — allowed
+  var clash=findInvoiceClash(d.inv_num);
+  if(clash){
+    var el=document.getElementById('i-num'),warn=document.getElementById('i-num-warn');
+    if(warn)warn.style.display='block';
+    if(el){el.focus();el.style.borderColor='#ef4444';el.scrollIntoView({behavior:'smooth',block:'center'});}
+    toast('⚠ Invoice #'+d.inv_num.replace(/^#+/,'')+' already exists ('+(clash.client_name||'-')+', $'+(clash.total||0).toFixed(2)+'). Change the number to continue.');
+    return false;
+  }
+  return true;
+}
 function genPDF(p,isQ){
   var d=collect(p);
+  if(!isQ&&!guardInvoiceNum(d))return null;
   makePDF(d,isQ);
   if(isQ){saveQEntry(d);saveContact(d,'Quote');}
-  else{saveISEntry(d);saveContact(d,'Invoice');}
+  else{saveISEntry(d);saveContact(d,'Invoice');editingInvoiceNum=d.inv_num;}
   return d;
 }
-function pdfAndSave(){var d=collect('i');makePDF(d,false);saveISEntry(d);saveContact(d,'Invoice');saveBook();}
+
+// ─── EMAIL INVOICE ───────────────────────────────────────────────
+function sendInvoiceEmail(opts){
+  var toEncoded=(opts.to||'').split(',').map(function(x){return encodeURIComponent(x.trim());}).filter(Boolean).join(',');
+  if(!toEncoded){toast('⚠ No client email on file — add one in Client Info or Contacts first.');return;}
+  var subject='Invoice #'+opts.num+' - Crazy Cravings';
+  var body='Hi '+(opts.contact||'there')+',\n\n'
+    +'I hope you are having a fantastic day! It was a pleasure bringing our ice cream service to you and your team, and we hope everyone had a great time and enjoyed the treats.\n\n'
+    +"I've had a chance to catch up on some paperwork and have attached your invoice for your records.\n\n"
+    +"For your convenience, we accept payment by cheque, e-Transfer, EFT, or credit card. If you would like to pay by credit card, just let me know and I'll be happy to send you a secure payment link.\n\n"
+    +'Thank you again, and we truly appreciate your business!\n\n'
+    +'Andrea Coates\nCrazy Cravings Inc.';
+  toast('Opening your email app — remember to attach the invoice PDF!');
+  window.location.href='mailto:'+toEncoded+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
+}
+function emailInvoice(p){
+  var to=[g(p+'-cemail'),g(p+'-cemail2'),g(p+'-cemail3')].filter(Boolean).join(',');
+  var num=g(p+'-num').replace(/^#+/,'');
+  var contact=g(p+'-catt');
+  sendInvoiceEmail({to:to,num:num,contact:contact});
+}
+function emailInvoiceFromStatus(e){
+  var d=e.data||{};
+  var to=[d.client_email,d.client_email2,d.client_email3].filter(Boolean).join(',');
+  var contact=(e.client_att||d.client_att||'').replace(/^Att\.\s*/,'');
+  sendInvoiceEmail({to:to,num:(e.inv_num||'').replace(/^#+/,''),contact:contact});
+}
 
 function makePDF(d,isQ){
   if(typeof window.jspdf==='undefined'){toast('PDF not available - check internet');return;}
@@ -1006,8 +1096,10 @@ function q2iFromHist(num){
   if(!en)return;
   fillInvoice(en.data);goTab('invoice');toast('Quote converted to Invoice!');
 }
-function q2i(){fillInvoice(collect('q'));goTab('invoice');toast('Converted!');}
-function fillInvoice(d){
+function q2i(){fillInvoice(collect('q'),false);goTab('invoice');toast('Converted!');}
+var editingInvoiceNum=null;
+function fillInvoice(d,isExisting){
+  editingInvoiceNum=isExisting?('#'+(d.inv_num||'').replace(/^#+/,'')):null;
   function sv(id,v){var el=document.getElementById(id);if(el)el.value=v||'';}
   sv('i-num',(d.inv_num||'').replace(/^#+/,'').replace(/^QT/,'INV'));
   sv('i-date',d.inv_date_raw);sv('i-po',d.po_number);
@@ -1024,6 +1116,7 @@ function fillInvoice(d){
   S['i'].items=JSON.parse(JSON.stringify(d.items||[]));
   S['i'].shifts=JSON.parse(JSON.stringify(d.shifts||[]));
   renderItems('i');renderShifts('i');
+  checkInvoiceNumLive();
 }
 function renderQH(){
   var f=document.getElementById('qhf').value;
@@ -1061,17 +1154,40 @@ function renderQH(){
 }
 
 // ─── INVOICE STATUS ──────────────────────────────────────────────
+function netDays(net){
+  var m=(net||'').match(/(\d+)/);
+  return m?parseInt(m[1],10):30;
+}
 function saveISEntry(d){
   var sd=d.send_date||new Date().toISOString().slice(0,10);
-  var due=new Date(sd);due.setDate(due.getDate()+30);
+  var due=new Date(sd+'T12:00:00');due.setDate(due.getDate()+netDays(d.ev_net));
   var e={inv_num:d.inv_num,client_name:d.client_name,client_att:d.client_att,
     send_date:sd,due_date:due.toISOString().slice(0,10),status:'unpaid',
-    total:d.total,cc_total:d.cc_total,pay_method:'',received_date:'',data:d};
+    total:d.total,cc_total:d.cc_total,ev_net:d.ev_net||'NET 30',pay_method:'',received_date:'',data:d};
   var i=iStatus.findIndex(function(x){return x.inv_num===d.inv_num;});
   if(i>=0)iStatus[i]=e;else iStatus.unshift(e);
   localStorage.setItem('cc_istatus',JSON.stringify(iStatus));
   fbSave('istatus',d.inv_num,e);
-  toast('Invoice saved to Status!');
+  toast('Invoice saved to Status! Due in '+netDays(d.ev_net)+' days ('+due.toISOString().slice(0,10)+')');
+}
+function recalcDueDates(){
+  if(!iStatus.length){toast('No invoices to check.');return;}
+  if(!confirm('Recalculate due dates for all invoices using their actual NET terms (15/30/45/60 days)? This fixes any invoice that was saved with the wrong due date.'))return;
+  var count=0;
+  iStatus.forEach(function(e){
+    if(!e.send_date)return;
+    var net=(e.data&&e.data.ev_net)||e.ev_net||'NET 30';
+    var due=new Date(e.send_date+'T12:00:00');due.setDate(due.getDate()+netDays(net));
+    var newDue=due.toISOString().slice(0,10);
+    if(newDue!==e.due_date){
+      e.due_date=newDue;e.ev_net=net;
+      fbSave('istatus',e.inv_num,e);
+      count++;
+    }
+  });
+  localStorage.setItem('cc_istatus',JSON.stringify(iStatus));
+  renderIS();renderDash();
+  toast(count?count+' due date'+(count===1?'':'s')+' corrected!':'All due dates were already correct.');
 }
 function daysOver(due){
   if(!due)return 0;
@@ -1178,7 +1294,10 @@ function renderIS(){
     var t2=document.createElement('td');t2.textContent=e.client_name||'-';t2.title=e.client_name||'';
     var t3=document.createElement('td');t3.textContent=e.client_att||'-';t3.title=e.client_att||'';t3.style.cssText='color:#888;font-size:11px';
     var t4=document.createElement('td');t4.textContent=e.send_date||'-';
-    var t5=document.createElement('td');t5.textContent=e.due_date||'-';
+    var t5=document.createElement('td');
+    var netTerm=(e.data&&e.data.ev_net)||e.ev_net||'NET 30';
+    t5.innerHTML=(e.due_date||'-')+'<br><span style="font-size:9.5px;color:#aaa">'+netTerm+'</span>';
+    t5.title='Due '+netDays(netTerm)+' days after send date ('+netTerm+')';
     var t6=document.createElement('td');
     var rdIn=document.createElement('input');rdIn.type='date';rdIn.value=e.received_date||'';
     rdIn.style.cssText='border:1px solid var(--bd);border-radius:4px;font-size:10.5px;padding:2px 3px;width:98px';
@@ -1235,8 +1354,11 @@ function renderIS(){
       var lb=document.createElement('button');lb.className='cvt o';lb.textContent='⚠ Late +3%';
       lb.addEventListener('click',function(){genLate(e.inv_num);});t9.appendChild(lb);
     }
+    var mb=document.createElement('button');mb.className='cvt';mb.style.background='#2563eb';mb.textContent='✉';mb.title='Email invoice to client';
+    mb.addEventListener('click',function(){emailInvoiceFromStatus(e);});
+    t9.appendChild(mb);
     var eb=document.createElement('button');eb.className='cvt s';eb.textContent='✏';
-    eb.addEventListener('click',function(){fillInvoice(e.data);goTab('invoice');toast('Edit invoice and regenerate PDF.');});
+    eb.addEventListener('click',function(){fillInvoice(e.data,true);goTab('invoice');toast('Edit invoice and regenerate PDF.');});
     t9.appendChild(eb);
     var db=document.createElement('button');db.className='cvt o';db.textContent='🗑';
     db.addEventListener('click',function(){confirmDel(e.inv_num);});
@@ -1570,13 +1692,169 @@ function confirmDel(num){
 }
 
 // ─── CONTACTS ────────────────────────────────────────────────────
+function ctKey(c){return(c.email||c.company||'').replace(/[^a-zA-Z0-9]/g,'_');}
+function updContactField(i,field,value){
+  if(!contacts[i])return;
+  contacts[i][field]=value;
+  localStorage.setItem('cc_contacts',JSON.stringify(contacts));
+  fbSave('contacts',ctKey(contacts[i]),contacts[i]);
+  buildClientDB();
+  renderCT();
+  toast('Contact updated!');
+}
+function groupContacts(){
+  var groups={},order=[];
+  contacts.forEach(function(c,i){
+    var key=(c.company||'').trim().toLowerCase()||'—unnamed—';
+    if(!groups[key]){groups[key]={company:c.company||'(No company)',records:[]};order.push(key);}
+    groups[key].records.push({idx:i,c:c});
+  });
+  return groups;
+}
+var ctSelectedCompany=null;
+function selectClient(key){ctSelectedCompany=key;renderCT();}
+function addNewClient(){
+  var name=prompt('New client — company name:');
+  if(!name||!name.trim())return;
+  var e={company:name.trim(),contact:'',email:'',addr:'',city:'',source:'Manual',date:new Date().toISOString().slice(0,10)};
+  contacts.unshift(e);
+  localStorage.setItem('cc_contacts',JSON.stringify(contacts));
+  fbSave('contacts',ctKey(e)+'_'+Date.now(),e);
+  buildClientDB();
+  ctSelectedCompany=name.trim().toLowerCase();
+  renderCT();
+}
+function addClientContact(key){
+  var groups=groupContacts();var g=groups[key];
+  if(!g)return;
+  var ref=g.records[0].c;
+  var e={company:g.company,contact:'',email:'',addr:ref.addr||'',city:ref.city||'',source:'Manual',date:new Date().toISOString().slice(0,10)};
+  contacts.push(e);
+  localStorage.setItem('cc_contacts',JSON.stringify(contacts));
+  fbSave('contacts',ctKey(e)+'_'+Date.now(),e);
+  buildClientDB();
+  renderCT();
+}
+function renameClientCompany(oldKey,newVal){
+  newVal=(newVal||'').trim();
+  if(!newVal){renderCT();return;}
+  contacts.forEach(function(c){
+    if((c.company||'').trim().toLowerCase()===oldKey){
+      c.company=newVal;
+      fbSave('contacts',ctKey(c),c);
+    }
+  });
+  localStorage.setItem('cc_contacts',JSON.stringify(contacts));
+  ctSelectedCompany=newVal.toLowerCase();
+  buildClientDB();
+  renderCT();
+  toast('Client renamed!');
+}
+function deleteClientGroup(key){
+  var groups=groupContacts();var g=groups[key];
+  if(!g)return;
+  if(!confirm('Delete client "'+g.company+'" and all '+g.records.length+' associated contact(s)? This cannot be undone.'))return;
+  var idxs=g.records.map(function(r){return r.idx;}).sort(function(a,b){return b-a;});
+  idxs.forEach(function(i){var k=ctKey(contacts[i]);contacts.splice(i,1);if(k)fbDel('contacts',k);});
+  localStorage.setItem('cc_contacts',JSON.stringify(contacts));
+  ctSelectedCompany=null;
+  buildClientDB();
+  renderCT();
+  toast('Client deleted.');
+}
 function delContact(i){
-  if(!confirm('Remove this contact?'))return;
-  var key=(contacts[i].email||contacts[i].company||'').replace(/[^a-zA-Z0-9]/g,'_');
+  if(!confirm('Remove this contact/email?'))return;
+  var key=ctKey(contacts[i]);
   contacts.splice(i,1);
   localStorage.setItem('cc_contacts',JSON.stringify(contacts));
   if(key)fbDel('contacts',key);
+  buildClientDB();
   renderCT();
+}
+function renderCT(){
+  var listEl=document.getElementById('ct-list');
+  if(!listEl)return;
+  var groups=groupContacts();
+  var s=(document.getElementById('ct-search')||{value:''}).value.toLowerCase();
+  var keys=Object.keys(groups).filter(function(k){
+    if(!s)return true;
+    var g=groups[k];
+    if(g.company.toLowerCase().includes(s))return true;
+    return g.records.some(function(r){return(r.c.contact||'').toLowerCase().includes(s)||(r.c.email||'').toLowerCase().includes(s);});
+  }).sort(function(a,b){return groups[a].company.localeCompare(groups[b].company);});
+  document.getElementById('ct-empty').style.display=keys.length?'none':'block';
+  if(!keys.length){
+    document.getElementById('ct-empty').textContent=contacts.length?'No clients match "'+s+'".':'No contacts yet. Collected from Quote and Invoice forms.';
+  }
+  if(ctSelectedCompany&&keys.indexOf(ctSelectedCompany)<0)ctSelectedCompany=null;
+  listEl.innerHTML=keys.map(function(k){
+    var g=groups[k];
+    var n=g.records.length;
+    var lastDate=g.records.map(function(r){return r.c.date||'';}).filter(Boolean).sort().pop();
+    return '<div class="ct-item'+(ctSelectedCompany===k?' active':'')+'" onclick="selectClient(\''+jsEsc(k)+'\')">'
+      +'<div class="ctn">'+g.company+'</div>'
+      +'<div class="cts">'+n+' contact'+(n>1?'s':'')+(lastDate?' · '+lastDate:'')+'</div></div>';
+  }).join('');
+  renderClientDetail(groups);
+}
+function renderClientDetail(groups){
+  var wrap=document.getElementById('ct-detail-content');
+  var emptyEl=document.getElementById('ct-detail-empty');
+  if(!wrap||!emptyEl)return;
+  if(!ctSelectedCompany||!groups[ctSelectedCompany]){
+    wrap.style.display='none';emptyEl.style.display='block';
+    return;
+  }
+  emptyEl.style.display='none';wrap.style.display='block';
+  var key=ctSelectedCompany,g=groups[key],primary=g.records[0];
+  var hist=iStatus.filter(function(e){return e.status!=='replaced'&&(e.client_name||'').trim().toLowerCase()===g.company.trim().toLowerCase();});
+  var totalBilled=hist.reduce(function(s,e){return s+(e.total||0);},0);
+  var totalPaid=hist.filter(function(e){return e.status==='paid';}).reduce(function(s,e){return s+(e.total||0);},0);
+  var html='';
+  html+='<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:18px">';
+  html+='<input class="editin" value="'+esc(g.company)+'" style="font-size:19px;font-weight:800;flex:1" onchange="renameClientCompany(\''+jsEsc(key)+'\',this.value)">';
+  html+='<button class="cvt o" onclick="deleteClientGroup(\''+jsEsc(key)+'\')" title="Delete this client" style="white-space:nowrap">🗑 Delete Client</button>';
+  html+='</div>';
+  html+='<div class="r2" style="margin-bottom:18px">';
+  html+='<div class="f"><label>Address</label><input class="editin" value="'+esc(primary.c.addr||'')+'" placeholder="Street address" onchange="updContactField('+primary.idx+',\'addr\',this.value)"></div>';
+  html+='<div class="f"><label>City</label><input class="editin" value="'+esc(primary.c.city||'')+'" placeholder="City, Province" onchange="updContactField('+primary.idx+',\'city\',this.value)"></div>';
+  html+='</div>';
+  html+='<h3 style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--bd)">Contacts &amp; Emails</h3>';
+  html+='<div style="margin-bottom:10px">';
+  g.records.forEach(function(r){
+    html+='<div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:7px;align-items:center">'
+      +'<input class="editin" placeholder="Contact name" value="'+esc(r.c.contact||'')+'" onchange="updContactField('+r.idx+',\'contact\',this.value)">'
+      +'<input class="editin" type="email" placeholder="Email" value="'+esc(r.c.email||'')+'" onchange="updContactField('+r.idx+',\'email\',this.value)">'
+      +'<button class="cvt o" onclick="delContact('+r.idx+')" title="Remove this contact">×</button></div>';
+  });
+  html+='</div>';
+  html+='<button class="ab" onclick="addClientContact(\''+jsEsc(key)+'\')">+ Add another contact / email</button>';
+  html+='<div style="margin-top:22px;padding-top:16px;border-top:1px solid var(--bd)">';
+  html+='<h3 style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin-bottom:10px">Invoice History</h3>';
+  if(hist.length){
+    html+='<div style="display:flex;gap:22px;margin-bottom:10px;font-size:12.5px;flex-wrap:wrap">'
+      +'<span>Invoices: <b>'+hist.length+'</b></span>'
+      +'<span>Total Billed: <b>$ '+totalBilled.toFixed(2)+'</b></span>'
+      +'<span>Total Received: <b style="color:#1a8a4a">$ '+totalPaid.toFixed(2)+'</b></span></div>';
+    html+=hist.slice(0,6).map(function(e){
+      var ov=e.status==='unpaid'&&daysOver(e.due_date)>0;
+      var color=e.status==='paid'?'#1a8a4a':ov?'#ef4444':'#f59e0b';
+      var lbl=e.status==='paid'?'Paid':ov?'Overdue':'Unpaid';
+      return '<div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0;border-bottom:1px solid #f5f5f8">'
+        +'<span>'+(e.inv_num||'-')+'</span><span style="color:'+color+'">'+lbl+'</span><span>$ '+(e.total||0).toFixed(2)+'</span></div>';
+    }).join('');
+    if(hist.length>6)html+='<div style="font-size:11px;color:var(--mut);margin-top:6px">+ '+(hist.length-6)+' more — see Invoice Status tab</div>';
+  } else {
+    html+='<div style="color:var(--mut);font-size:12px">No invoices for this client yet.</div>';
+  }
+  html+='</div>';
+  wrap.innerHTML=html;
+}
+function exportContacts(){
+  var h=['Company','Contact','Email','Source','Date'];
+  var rows=contacts.map(function(c){return[c.company,c.contact,c.email,c.source,c.date];});
+  var csv=[h].concat(rows).map(function(r){return r.map(function(v){return'"'+(v||'')+'"';}).join(',');}).join('\n');
+  var a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);a.download='contacts.csv';a.click();
 }
 function saveContact(d,src){
   if(!d.client_name&&!d.client_email)return;
@@ -1648,58 +1926,6 @@ function fillFromClientDB(p){
   if(match.email)document.getElementById(p+'-cemail').value=match.email;
   toast('Client info auto-filled!');
 }
-function ctKey(c){return(c.email||c.company||'').replace(/[^a-zA-Z0-9]/g,'_');}
-function updContactField(i,field,value){
-  if(!contacts[i])return;
-  contacts[i][field]=value;
-  localStorage.setItem('cc_contacts',JSON.stringify(contacts));
-  fbSave('contacts',ctKey(contacts[i]),contacts[i]);
-  buildClientDB();
-  toast('Contact updated!');
-}
-function renderCT(){
-  var el=document.getElementById('ct-body');
-  if(!el)return;
-  var s=(document.getElementById('ct-search')||{value:''}).value.toLowerCase();
-  var filt=contacts.map(function(c,i){return{c:c,i:i};}).filter(function(o){
-    if(!s)return true;
-    var c=o.c;
-    return(c.company||'').toLowerCase().includes(s)||(c.contact||'').toLowerCase().includes(s)
-      ||(c.email||'').toLowerCase().includes(s)||(c.source||'').toLowerCase().includes(s)
-      ||(c.date||'').toLowerCase().includes(s);
-  });
-  document.getElementById('ct-empty').style.display=filt.length?'none':'block';
-  if(!filt.length&&contacts.length&&s){
-    document.getElementById('ct-empty').style.display='block';
-    document.getElementById('ct-empty').textContent='No contacts match "'+s+'".';
-  } else if(!contacts.length){
-    document.getElementById('ct-empty').textContent='No contacts yet. Collected from Quote and Invoice forms.';
-  }
-  el.innerHTML=filt.map(function(o){
-    var c=o.c,i=o.i;
-    return '<tr>'
-      +'<td><input class="editin" value="'+esc(c.company)+'" onchange="updContactField('+i+',\'company\',this.value)"></td>'
-      +'<td><input class="editin" value="'+esc(c.contact)+'" onchange="updContactField('+i+',\'contact\',this.value)"></td>'
-      +'<td><input class="editin" type="email" value="'+esc(c.email)+'" onchange="updContactField('+i+',\'email\',this.value)"></td>'
-      +'<td><input class="editin" value="'+esc(c.source)+'" onchange="updContactField('+i+',\'source\',this.value)" style="font-size:11px;color:#888"></td>'
-      +'<td><input class="editin" type="date" value="'+esc(c.date)+'" onchange="updContactField('+i+',\'date\',this.value)" style="font-size:11px;color:#888"></td>'
-      +'<td><button class="cvt o" onclick="delContact('+i+')" title="Delete">×</button></td></tr>';
-  }).join('');
-}
-function delContact(i){
-  if(!confirm('Remove this contact?'))return;
-  var key=(contacts[i].email||contacts[i].company||'').replace(/[^a-zA-Z0-9]/g,'_');
-  contacts.splice(i,1);
-  localStorage.setItem('cc_contacts',JSON.stringify(contacts));
-  if(key&&window._db)window._db.collection('contacts').doc(key).delete().catch(function(){});
-  renderCT();
-}
-function exportContacts(){
-  var h=['Company','Contact','Email','Source','Date'];
-  var rows=contacts.map(function(c){return[c.company,c.contact,c.email,c.source,c.date];});
-  var csv=[h].concat(rows).map(function(r){return r.map(function(v){return'"'+(v||'')+'"';}).join(',');}).join('\n');
-  var a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);a.download='contacts.csv';a.click();
-}
 
 // ─── CASH BOOK ───────────────────────────────────────────────────
 function saveBook(){
@@ -1750,16 +1976,57 @@ function updateStats(){
 
 // ─── DASHBOARD ───────────────────────────────────────────────────
 var dashPeriodMonths=6;
+var dashMode='preset'; // 'preset' | 'custom' | 'range'
+var dashCustomVal='';
+var dashFromDate='',dashToDate='';
+var dashClientFilter='';
 var dashChartMonthly=null,dashChartStatus=null;
+function resetDashCustomInputs(){
+  var ms=document.getElementById('dash-month-select');if(ms)ms.value='';
+  var df=document.getElementById('dash-from');if(df)df.value='';
+  var dt=document.getElementById('dash-to');if(dt)dt.value='';
+}
 function setDashPeriod(n){
-  dashPeriodMonths=n;
+  dashMode='preset';dashPeriodMonths=n;
+  resetDashCustomInputs();
   document.querySelectorAll('#dash-period .seg-btn').forEach(function(b){b.classList.toggle('on',parseInt(b.getAttribute('data-p'),10)===n);});
+  renderDash();
+}
+function setDashCustomPeriod(val){
+  if(!val)return;
+  dashMode='custom';dashCustomVal=val;
+  document.querySelectorAll('#dash-period .seg-btn').forEach(function(b){b.classList.remove('on');});
+  var df=document.getElementById('dash-from');if(df)df.value='';
+  var dt=document.getElementById('dash-to');if(dt)dt.value='';
+  renderDash();
+}
+function setDashClient(val){
+  dashClientFilter=val;
+  renderDash();
+}
+function clearDashFilters(){
+  dashClientFilter='';
+  var cs=document.getElementById('dash-client-select');if(cs)cs.value='';
+  setDashPeriod(6);
+}
+function applyDashRange(){
+  var from=(document.getElementById('dash-from')||{}).value||'';
+  var to=(document.getElementById('dash-to')||{}).value||'';
+  if(!from&&!to){toast('Pick a From and/or To date first.');return;}
+  if(from&&to&&from>to){toast('"From" date must be before "To" date.');return;}
+  dashMode='range';dashFromDate=from;dashToDate=to;
+  document.querySelectorAll('#dash-period .seg-btn').forEach(function(b){b.classList.remove('on');});
+  var ms=document.getElementById('dash-month-select');if(ms)ms.value='';
   renderDash();
 }
 function monthKey(dateStr){return dateStr?dateStr.slice(0,7):null;}
 function prettyMonth(m){
   var parts=m.split('-');var d=new Date(parseInt(parts[0],10),parseInt(parts[1],10)-1,1);
   return d.toLocaleDateString('en-US',{month:'short',year:'numeric'});
+}
+function prettyMonthLong(m){
+  var parts=m.split('-');var d=new Date(parseInt(parts[0],10),parseInt(parts[1],10)-1,1);
+  return d.toLocaleDateString('en-US',{month:'long',year:'numeric'});
 }
 function lastNMonths(n){
   var months=[],now=new Date();
@@ -1770,22 +2037,112 @@ function lastNMonths(n){
   return months;
 }
 function entryDate(e){return(e.data&&e.data.inv_date_raw)?e.data.inv_date_raw:(e.send_date||'');}
+function populateDashMonthSelect(nonRepl){
+  var sel=document.getElementById('dash-month-select');
+  if(!sel)return;
+  var cur=sel.value;
+  var monthsSet={},yearsSet={};
+  nonRepl.forEach(function(e){
+    var d=entryDate(e);if(!d)return;
+    var mk=monthKey(d);if(mk)monthsSet[mk]=true;
+    var yr=d.slice(0,4);if(yr)yearsSet[yr]=true;
+  });
+  var months=Object.keys(monthsSet).sort().reverse();
+  var years=Object.keys(yearsSet).sort().reverse();
+  var quartersSet={};
+  months.forEach(function(m){
+    var yr=m.slice(0,4),mo=parseInt(m.slice(5,7),10),q=Math.ceil(mo/3);
+    quartersSet[yr+'-'+q]=true;
+  });
+  var quarters=Object.keys(quartersSet).sort().reverse();
+  var html='<option value="">Month / Quarter / Year...</option>';
+  if(months.length)html+='<optgroup label="Month">'+months.map(function(m){return '<option value="m-'+m+'">'+prettyMonth(m)+'</option>';}).join('')+'</optgroup>';
+  if(quarters.length)html+='<optgroup label="Quarter">'+quarters.map(function(q){var p=q.split('-');return '<option value="q-'+q+'">Q'+p[1]+' '+p[0]+'</option>';}).join('')+'</optgroup>';
+  if(years.length)html+='<optgroup label="Year">'+years.map(function(y){return '<option value="y-'+y+'">'+y+'</option>';}).join('')+'</optgroup>';
+  sel.innerHTML=html;
+  sel.value=cur;
+}
+function populateDashClientSelect(nonRepl){
+  var sel=document.getElementById('dash-client-select');
+  if(!sel)return;
+  var cur=sel.value;
+  var names={};
+  nonRepl.forEach(function(e){if(e.client_name)names[e.client_name]=true;});
+  var list=Object.keys(names).sort();
+  sel.innerHTML='<option value="">All Clients</option>'+list.map(function(n){return '<option value="'+esc(n)+'">'+n+'</option>';}).join('');
+  sel.value=cur;
+}
 function renderDash(){
   var el=document.getElementById('dash-total');
   if(!el)return;
   var nonRepl=iStatus.filter(function(e){return e.status!=='replaced';});
-  // Determine months window for charts + period-scoped stats
-  var months;
-  if(dashPeriodMonths>0){
-    months=lastNMonths(dashPeriodMonths);
+  populateDashMonthSelect(nonRepl);
+  populateDashClientSelect(nonRepl);
+  // Determine months window for charts + period-scoped stats, based on active filter mode
+  var months,periodScoped;
+  var filterBox=document.getElementById('dash-active-filter');
+  var filterLabel=document.getElementById('dash-active-filter-label');
+  var customLabel='';
+  if(dashMode==='custom'&&dashCustomVal){
+    var parts=dashCustomVal.split('-'),type=parts[0];
+    if(type==='m'){
+      var mk=parts[1]+'-'+parts[2];
+      months=[mk];
+      periodScoped=nonRepl.filter(function(e){return monthKey(entryDate(e))===mk;});
+      customLabel=prettyMonthLong(mk);
+    } else if(type==='q'){
+      var qyr=parts[1],q=parseInt(parts[2],10),qMonths=[];
+      for(var mm=(q-1)*3+1;mm<=q*3;mm++)qMonths.push(qyr+'-'+String(mm).padStart(2,'0'));
+      months=qMonths;
+      var qset={};qMonths.forEach(function(m){qset[m]=true;});
+      periodScoped=nonRepl.filter(function(e){return qset[monthKey(entryDate(e))];});
+      customLabel='Q'+q+' '+qyr;
+    } else if(type==='y'){
+      var yyr=parts[1],yMonths=[];
+      for(var mi=1;mi<=12;mi++)yMonths.push(yyr+'-'+String(mi).padStart(2,'0'));
+      months=yMonths;
+      periodScoped=nonRepl.filter(function(e){return(entryDate(e)||'').slice(0,4)===yyr;});
+      customLabel=yyr;
+    } else {
+      months=lastNMonths(6);periodScoped=nonRepl;
+    }
+  } else if(dashMode==='range'&&(dashFromDate||dashToDate)){
+    periodScoped=nonRepl.filter(function(e){
+      var d=entryDate(e);
+      if(!d)return false;
+      if(dashFromDate&&d<dashFromDate)return false;
+      if(dashToDate&&d>dashToDate)return false;
+      return true;
+    });
+    var monthsSet={};
+    periodScoped.forEach(function(e){var mk=monthKey(entryDate(e));if(mk)monthsSet[mk]=true;});
+    months=Object.keys(monthsSet).sort();
+    if(!months.length)months=[monthKey(dashFromDate||dashToDate)||lastNMonths(1)[0]];
+    customLabel=(dashFromDate||'…')+' → '+(dashToDate||'…');
   } else {
-    var distinct={};
-    nonRepl.forEach(function(e){var mk=monthKey(entryDate(e));if(mk)distinct[mk]=true;});
-    months=Object.keys(distinct).sort();
-    if(!months.length)months=lastNMonths(1);
+    dashMode='preset';
+    if(dashPeriodMonths>0){
+      months=lastNMonths(dashPeriodMonths);
+    } else {
+      var distinct={};
+      nonRepl.forEach(function(e){var mk=monthKey(entryDate(e));if(mk)distinct[mk]=true;});
+      months=Object.keys(distinct).sort();
+      if(!months.length)months=lastNMonths(1);
+    }
+    var monthSet={};months.forEach(function(m){monthSet[m]=true;});
+    periodScoped=dashPeriodMonths>0?nonRepl.filter(function(e){return monthSet[monthKey(entryDate(e))];}):nonRepl;
   }
-  var monthSet={};months.forEach(function(m){monthSet[m]=true;});
-  var periodScoped=dashPeriodMonths>0?nonRepl.filter(function(e){return monthSet[monthKey(entryDate(e))];}):nonRepl;
+  // Client filter (combines with whichever period mode is active)
+  if(dashClientFilter)periodScoped=periodScoped.filter(function(e){return e.client_name===dashClientFilter;});
+  // Active-filter banner
+  var labelParts=[];
+  if(customLabel)labelParts.push(customLabel);
+  if(dashClientFilter)labelParts.push(dashClientFilter);
+  if(labelParts.length){
+    filterBox.style.display='block';filterLabel.textContent=labelParts.join(' · ');
+  } else {
+    filterBox.style.display='none';
+  }
   // Stat cards (period-scoped)
   var total=periodScoped.reduce(function(s,e){return s+(e.total||0);},0);
   var paid=periodScoped.filter(function(e){return e.status==='paid';}).reduce(function(s,e){return s+(e.total||0);},0);
@@ -1821,9 +2178,9 @@ function renderDash(){
       +'<td>$ '+(e.total||0).toFixed(2)+'</td>'
       +'<td><span class="dot" style="background:'+color+'"></span><span style="font-size:11px;color:'+color+'">'+lbl+'</span></td></tr>';
   }).join(''):'<tr><td colspan="6" style="text-align:center;color:var(--mut);padding:16px">No invoices yet.</td></tr>';
-  renderDashCharts(months,nonRepl);
+  renderDashCharts(months,periodScoped);
 }
-function renderDashCharts(months,nonRepl){
+function renderDashCharts(months,scoped){
   var ctx1=document.getElementById('dash-chart-monthly');
   var ctx2=document.getElementById('dash-chart-status');
   if(!ctx1||!ctx2)return;
@@ -1841,10 +2198,10 @@ function renderDashCharts(months,nonRepl){
     return;
   }
   var billed=months.map(function(m){
-    return nonRepl.filter(function(e){return monthKey(entryDate(e))===m;}).reduce(function(s,e){return s+(e.total||0);},0);
+    return scoped.filter(function(e){return monthKey(entryDate(e))===m;}).reduce(function(s,e){return s+(e.total||0);},0);
   });
   var received=months.map(function(m){
-    return nonRepl.filter(function(e){return monthKey(entryDate(e))===m&&e.status==='paid';}).reduce(function(s,e){return s+(e.total||0);},0);
+    return scoped.filter(function(e){return monthKey(entryDate(e))===m&&e.status==='paid';}).reduce(function(s,e){return s+(e.total||0);},0);
   });
   if(dashChartMonthly)dashChartMonthly.destroy();
   dashChartMonthly=new Chart(ctx1,{
@@ -1859,8 +2216,6 @@ function renderDashCharts(months,nonRepl){
       scales:{y:{beginAtZero:true,ticks:{callback:function(v){return '$'+v;},font:{size:10}}},x:{ticks:{font:{size:10}}}}
     }
   });
-  var monthSet={};months.forEach(function(m){monthSet[m]=true;});
-  var scoped=nonRepl.filter(function(e){return monthSet[monthKey(entryDate(e))];});
   var paidSum=scoped.filter(function(e){return e.status==='paid';}).reduce(function(s,e){return s+(e.total||0);},0);
   var overdueSum=scoped.filter(function(e){return e.status==='unpaid'&&daysOver(e.due_date)>0;}).reduce(function(s,e){return s+(e.total||0);},0);
   var unpaidSum=scoped.filter(function(e){return e.status==='unpaid'&&daysOver(e.due_date)<=0;}).reduce(function(s,e){return s+(e.total||0);},0);
@@ -1884,6 +2239,7 @@ function exportCSV(){
 // ─── CLEAR ───────────────────────────────────────────────────────
 function clr(p){
   if(!confirm('Clear all fields?'))return;
+  if(p==='i')editingInvoiceNum=null;
   var ids=p==='i'?['i-num','i-po','i-cn','i-ca','i-city','i-catt','i-cemail','i-cemail2','i-cemail3','i-ed','i-edur','i-nop']:
                   ['q-num','q-po','q-cn','q-ca','q-city','q-catt','q-cemail','q-cemail2','q-cemail3','q-ed','q-edur','q-nop'];
   ids.forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
@@ -1898,6 +2254,7 @@ function clr(p){
   S[p].items=[{desc:'Travel fee',ppp:'',qty:'',amt:170}];
   S[p].shifts=[];
   renderItems(p);renderShifts(p);
+  if(p==='i')checkInvoiceNumLive();
 }
 
 // ─── FIREBASE SYNC ───────────────────────────────────────────────
@@ -1936,7 +2293,7 @@ function loadFirebase(){
             localStorage.setItem(cols[col],JSON.stringify(data));
             if(col==='ledger'){ledger=data;renderCB();updateStats();renderDash();}
             if(col==='quotes'){quotes=data;renderQH();}
-            if(col==='istatus'){iStatus=data;renderIS();renderDash();buildClientDB();}
+            if(col==='istatus'){iStatus=data;renderIS();renderDash();buildClientDB();checkInvoiceNumLive();}
             if(col==='contacts'){contacts=data;renderCT();buildClientDB();}
           }).catch(function(){});
         });
