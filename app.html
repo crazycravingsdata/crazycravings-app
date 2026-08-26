@@ -125,12 +125,20 @@ tbody td{padding:8px 11px;vertical-align:middle}
 .modal{background:#fff;border-radius:20px;padding:26px 28px;max-width:440px;width:90%;box-shadow:var(--sh-lg)}
 .dash-alert{background:linear-gradient(135deg,#fff5f5,#fff);border:1.5px solid #f8c9c9;border-radius:var(--rad);padding:16px 18px;margin-bottom:16px;max-width:1100px;box-shadow:var(--sh)}
 .dash-alert.ok{background:linear-gradient(135deg,#f2fbf5,#fff);border-color:#c9ecd4}
+.dash-alert.duesoon{background:linear-gradient(135deg,#fffbeb,#fff);border-color:#fde5a8}
+.dash-alert.duesoon h3{color:#b8770a}
+.dash-alert.duesoon .dash-row{border-bottom-color:#fbeecb}
 .dash-alert h3{font-size:13px;color:var(--red);margin-bottom:8px;display:flex;align-items:center;gap:6px}
 .dash-alert.ok h3{color:#1a8a4a}
-.dash-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #f5e2e2;font-size:12px}
+.dash-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #f5e2e2;font-size:12px;gap:10px}
 .dash-row:last-child{border-bottom:none}
 .dash-row b{color:var(--txt)}
-.dash-row .days{color:var(--red);font-weight:700;font-size:11px;background:#fde3e3;padding:2px 8px;border-radius:20px}
+.dash-row .days{color:var(--red);font-weight:700;font-size:11px;background:#fde3e3;padding:2px 8px;border-radius:20px;white-space:nowrap}
+.dash-row .days.soon{color:#b8770a;background:#fbecc9}
+.dash-row .info{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dash-row-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.dash-mail-btn{padding:4px 10px;background:#2563eb;color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;transition:filter .15s var(--ease)}
+.dash-mail-btn:hover{filter:brightness(1.1)}
 .seg{display:flex;background:#fff;border:1px solid var(--bd);border-radius:var(--rad-sm);padding:3px;gap:2px;box-shadow:var(--sh)}
 .seg-btn{padding:7px 15px;border:none;background:none;border-radius:8px;font-size:12px;font-weight:600;color:var(--mut);cursor:pointer;transition:all .15s var(--ease)}
 .seg-btn.on{background:linear-gradient(120deg,var(--red),var(--red-dk));color:#fff;box-shadow:0 2px 8px rgba(192,21,58,.25)}
@@ -233,6 +241,10 @@ tbody td{padding:8px 11px;vertical-align:middle}
   <div id="dash-overdue-box" class="dash-alert">
     <h3>🔴 <span id="dash-overdue-title">Overdue Invoices</span></h3>
     <div id="dash-overdue-list"></div>
+  </div>
+  <div id="dash-duesoon-box" class="dash-alert duesoon" style="display:none">
+    <h3>🟡 <span id="dash-duesoon-title">Due in the Next 5 Days</span></h3>
+    <div id="dash-duesoon-list"></div>
   </div>
   <div class="chart-grid">
     <div class="sec chart-card">
@@ -942,6 +954,30 @@ function emailInvoiceFromStatus(e){
   var to=[d.client_email,d.client_email2,d.client_email3].filter(Boolean).join(',');
   var contact=(e.client_att||d.client_att||'').replace(/^Att\.\s*/,'');
   sendInvoiceEmail({to:to,num:(e.inv_num||'').replace(/^#+/,''),contact:contact});
+}
+function sendDueSoonEmail(opts){
+  var toEncoded=(opts.to||'').split(',').map(function(x){return encodeURIComponent(x.trim());}).filter(Boolean).join(',');
+  if(!toEncoded){toast('⚠ No client email on file for this invoice — add one in Contacts first.');return;}
+  var subject='Payment Reminder – Invoice #'+opts.num+' (Due '+(opts.dueDate||'Soon')+')';
+  var body='Hi '+(opts.contact||'there')+',\n\n'
+    +"I hope you're doing well.\n\n"
+    +'This is just a friendly reminder as we are touching base to confirm whether the payment to Crazy Cravings has been submitted.\n\n'
+    +'Our payment terms are net '+opts.netDays+' days, and the payment is due by '+(opts.dueDate||'the due date')+'\n'
+    +'We just wanted to follow up before the due date to avoid any late fees.\n\n'
+    +'If the payment has already been processed, please disregard this reminder.\n\n'
+    +'Thank you so much, and please let us know if you have any questions.\n\n'
+    +'Andrea Coates\nCrazy Cravings Inc';
+  toast('Opening your email app to send the reminder!');
+  window.location.href='mailto:'+toEncoded+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
+}
+function emailDueSoonReminder(invNum){
+  var e=iStatus.find(function(x){return x.inv_num===invNum;});
+  if(!e){toast('Invoice not found.');return;}
+  var d=e.data||{};
+  var to=[d.client_email,d.client_email2,d.client_email3].filter(Boolean).join(',');
+  var contact=(e.client_att||d.client_att||'').replace(/^Att\.\s*/,'');
+  var net=d.ev_net||e.ev_net||'NET 30';
+  sendDueSoonEmail({to:to,num:(e.inv_num||'').replace(/^#+/,''),contact:contact,netDays:netDays(net),dueDate:e.due_date});
 }
 
 function makePDF(d,isQ){
@@ -2166,6 +2202,25 @@ function renderDash(){
     box.classList.add('ok');
     box.querySelector('h3').innerHTML='🟢 <span>All invoices up to date</span>';
     listEl.innerHTML='<div class="dash-row" style="border:none;color:var(--mut)">No overdue invoices right now.</div>';
+  }
+  // Due Soon box — invoices unpaid and due within the next 5 days (not yet overdue)
+  var dueSoon=nonRepl.filter(function(e){var dv=daysOver(e.due_date);return e.status==='unpaid'&&dv<=0&&dv>=-5;});
+  dueSoon.sort(function(a,b){return daysOver(b.due_date)-daysOver(a.due_date);});
+  var dsBox=document.getElementById('dash-duesoon-box');
+  var dsList=document.getElementById('dash-duesoon-list');
+  if(dueSoon.length){
+    dsBox.style.display='block';
+    dsBox.querySelector('h3').innerHTML='🟡 <span>'+dueSoon.length+' Invoice'+(dueSoon.length>1?'s':'')+' Due in the Next 5 Days</span>';
+    dsList.innerHTML=dueSoon.map(function(e){
+      var du=-daysOver(e.due_date);
+      var dueLabel=du===0?'Due today':du===1?'Due tomorrow':'Due in '+du+' days';
+      return '<div class="dash-row">'
+        +'<span class="info"><b>'+(e.inv_num||'-')+'</b> — '+(e.client_name||'-')+' · $ '+(e.total||0).toFixed(2)+'</span>'
+        +'<span class="dash-row-actions"><span class="days soon">'+dueLabel+'</span>'
+        +'<button class="dash-mail-btn" onclick="emailDueSoonReminder(\''+jsEsc(e.inv_num)+'\')">✉ Remind</button></span></div>';
+    }).join('');
+  } else {
+    dsBox.style.display='none';
   }
   // Recent invoices — always the 8 most recent, regardless of period
   var recent=nonRepl.slice().sort(function(a,b){return(b.send_date||'').localeCompare(a.send_date||'');}).slice(0,8);
