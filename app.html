@@ -18,8 +18,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;ba
 #lbox img{width:110px;border-radius:18px;margin-bottom:14px;box-shadow:0 6px 18px rgba(192,21,58,.18)}
 #lbox h2{color:var(--red);font-size:21px;margin-bottom:4px;letter-spacing:-.01em}
 #lbox p{color:var(--mut);font-size:12px;margin-bottom:20px}
-#lpwd{width:100%;padding:12px 14px;border:1.5px solid var(--bd);border-radius:12px;font-size:14px;margin-bottom:10px;text-align:center;display:block;outline:none;transition:border-color .15s var(--ease),box-shadow .15s var(--ease)}
+#lpwd{width:100%;padding:12px 40px 12px 14px;border:1.5px solid var(--bd);border-radius:12px;font-size:14px;margin-bottom:10px;text-align:center;display:block;outline:none;transition:border-color .15s var(--ease),box-shadow .15s var(--ease)}
 #lpwd:focus{border-color:var(--red);box-shadow:0 0 0 4px var(--red-lt)}
+.pwd-wrap{position:relative}
+.pwd-toggle{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:6px;color:#9a9aab;display:flex;align-items:center;justify-content:center;border-radius:6px;transition:color .15s var(--ease)}
+.pwd-toggle:hover{color:var(--red)}
 #lbtn{width:100%;padding:13px;background:linear-gradient(135deg,var(--red),var(--red-dk));color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;display:block;transition:transform .15s var(--ease),box-shadow .15s var(--ease);box-shadow:0 6px 16px rgba(192,21,58,.28)}
 #lbtn:hover{transform:translateY(-1px);box-shadow:0 8px 22px rgba(192,21,58,.34)}
 #lbtn:active{transform:translateY(0)}
@@ -150,6 +153,7 @@ tbody td{padding:8px 11px;vertical-align:middle}
 .ct-item:hover{background:var(--red-lt)}
 .ct-item.active{background:var(--red-lt);border-left-color:var(--red)}
 .ct-item .ctn{font-weight:700;font-size:13px;color:var(--txt)}
+.ct-tag{display:inline-block;font-weight:600;font-size:9.5px;color:var(--red);background:var(--red-lt);padding:2px 7px;border-radius:20px;vertical-align:middle;margin-left:4px}
 .ct-item .cts{font-size:11px;color:var(--mut);margin-top:2px}
 .ct-detail-pane{background:var(--card);border-radius:var(--rad);border:1px solid var(--bd);box-shadow:var(--sh);padding:22px;min-height:300px}
 .ct-detail-pane .f label{font-weight:700;text-transform:uppercase;font-size:9.5px;letter-spacing:.05em}
@@ -169,7 +173,13 @@ tbody td{padding:8px 11px;vertical-align:middle}
     <img id="ll" src="" alt="Crazy Cravings">
     <h2>Crazy Cravings</h2>
     <p>Invoice &amp; Cash Book — Restricted Access</p>
-    <input type="password" id="lpwd" placeholder="Enter password" onkeydown="if(event.key==='Enter')doLogin()">
+    <div class="pwd-wrap">
+      <input type="password" id="lpwd" placeholder="Enter password" onkeydown="if(event.key==='Enter')doLogin()">
+      <button type="button" class="pwd-toggle" onclick="togglePwd()" aria-label="Show password" title="Show password">
+        <svg id="lpwd-eye-open" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/></svg>
+        <svg id="lpwd-eye-closed" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a20.3 20.3 0 0 1 5.06-6.06M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 8 11 8a20.3 20.3 0 0 1-2.88 4.13M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+      </button>
+    </div>
     <button id="lbtn" onclick="doLogin()">Sign In</button>
     <div id="lerr">Incorrect password.</div>
   </div>
@@ -718,6 +728,15 @@ function getTimeStr(p){
   var em2=em?em.value.replace(':',''):'00';
   return sh.value+':'+sm2+' '+sa.value+' - '+eh.value+':'+em2+' '+ea.value;
 }
+function togglePwd(){
+  var el=document.getElementById('lpwd');
+  var eyeOpen=document.getElementById('lpwd-eye-open');
+  var eyeClosed=document.getElementById('lpwd-eye-closed');
+  var showing=el.type==='text';
+  el.type=showing?'password':'text';
+  eyeOpen.style.display=showing?'block':'none';
+  eyeClosed.style.display=showing?'none':'block';
+}
 function doLogin(){
   var p=document.getElementById('lpwd').value;
   if(p==='crazy@admin'||p==='CrazyCravings2026!'){
@@ -789,6 +808,7 @@ function getAmt(it){
 }
 function esc(v){return String(v||'').replace(/"/g,'&quot;');}
 function jsEsc(v){return String(v||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
+var EVENT_TYPES=['Corporate','Wedding','Birthday Party','Public Event','Film/TV Production','Other'];
 function renderItems(p){
   var el=document.getElementById(p+'-items');
   if(!el)return;
@@ -1196,24 +1216,36 @@ function netDays(net){
 }
 function saveISEntry(d){
   var sd=d.send_date||new Date().toISOString().slice(0,10);
-  var due=new Date(sd+'T12:00:00');due.setDate(due.getDate()+netDays(d.ev_net));
+  var baseDate=d.inv_date_raw||sd; // due date is based on the Invoice Date field, not today's date
+  var due=new Date(baseDate+'T12:00:00');due.setDate(due.getDate()+netDays(d.ev_net));
   var e={inv_num:d.inv_num,client_name:d.client_name,client_att:d.client_att,
     send_date:sd,due_date:due.toISOString().slice(0,10),status:'unpaid',
     total:d.total,cc_total:d.cc_total,ev_net:d.ev_net||'NET 30',pay_method:'',received_date:'',data:d};
   var i=iStatus.findIndex(function(x){return x.inv_num===d.inv_num;});
-  if(i>=0)iStatus[i]=e;else iStatus.unshift(e);
+  if(i>=0){
+    // Preserve status/payment info already tracked for this invoice — only refresh due date and underlying data
+    e.status=iStatus[i].status||'unpaid';
+    e.pay_method=iStatus[i].pay_method||'';
+    e.received_date=iStatus[i].received_date||'';
+    e.sent_status=iStatus[i].sent_status;
+    e.in_cashbook=iStatus[i].in_cashbook;
+    iStatus[i]=e;
+  } else {
+    iStatus.unshift(e);
+  }
   localStorage.setItem('cc_istatus',JSON.stringify(iStatus));
   fbSave('istatus',d.inv_num,e);
   toast('Invoice saved to Status! Due in '+netDays(d.ev_net)+' days ('+due.toISOString().slice(0,10)+')');
 }
 function recalcDueDates(){
   if(!iStatus.length){toast('No invoices to check.');return;}
-  if(!confirm('Recalculate due dates for all invoices using their actual NET terms (15/30/45/60 days)? This fixes any invoice that was saved with the wrong due date.'))return;
+  if(!confirm('Recalculate due dates for all invoices using their actual NET terms (15/30/45/60 days), based on each invoice\'s Invoice Date? This fixes any invoice that was saved with the wrong due date.'))return;
   var count=0;
   iStatus.forEach(function(e){
-    if(!e.send_date)return;
+    var baseDate=(e.data&&e.data.inv_date_raw)||e.send_date;
+    if(!baseDate)return;
     var net=(e.data&&e.data.ev_net)||e.ev_net||'NET 30';
-    var due=new Date(e.send_date+'T12:00:00');due.setDate(due.getDate()+netDays(net));
+    var due=new Date(baseDate+'T12:00:00');due.setDate(due.getDate()+netDays(net));
     var newDue=due.toISOString().slice(0,10);
     if(newDue!==e.due_date){
       e.due_date=newDue;e.ev_net=net;
@@ -1827,8 +1859,9 @@ function renderCT(){
     var g=groups[k];
     var n=g.records.length;
     var lastDate=g.records.map(function(r){return r.c.date||'';}).filter(Boolean).sort().pop();
+    var evType=g.records[0].c.eventType;
     return '<div class="ct-item'+(ctSelectedCompany===k?' active':'')+'" onclick="selectClient(\''+jsEsc(k)+'\')">'
-      +'<div class="ctn">'+g.company+'</div>'
+      +'<div class="ctn">'+g.company+(evType?' <span class="ct-tag">'+evType+'</span>':'')+'</div>'
       +'<div class="cts">'+n+' contact'+(n>1?'s':'')+(lastDate?' · '+lastDate:'')+'</div></div>';
   }).join('');
   renderClientDetail(groups);
@@ -1851,10 +1884,14 @@ function renderClientDetail(groups){
   html+='<input class="editin" value="'+esc(g.company)+'" style="font-size:19px;font-weight:800;flex:1" onchange="renameClientCompany(\''+jsEsc(key)+'\',this.value)">';
   html+='<button class="cvt o" onclick="deleteClientGroup(\''+jsEsc(key)+'\')" title="Delete this client" style="white-space:nowrap">🗑 Delete Client</button>';
   html+='</div>';
-  html+='<div class="r2" style="margin-bottom:18px">';
+  html+='<div class="r2" style="margin-bottom:14px">';
   html+='<div class="f"><label>Address</label><input class="editin" value="'+esc(primary.c.addr||'')+'" placeholder="Street address" onchange="updContactField('+primary.idx+',\'addr\',this.value)"></div>';
   html+='<div class="f"><label>City</label><input class="editin" value="'+esc(primary.c.city||'')+'" placeholder="City, Province" onchange="updContactField('+primary.idx+',\'city\',this.value)"></div>';
   html+='</div>';
+  html+='<div class="f" style="margin-bottom:18px;max-width:280px"><label>Event Type</label><select class="editin" onchange="updContactField('+primary.idx+',\'eventType\',this.value)">'
+    +'<option value=""'+(!primary.c.eventType?' selected':'')+'>— Select —</option>'
+    +EVENT_TYPES.map(function(t){return '<option value="'+esc(t)+'"'+(primary.c.eventType===t?' selected':'')+'>'+t+'</option>';}).join('')
+    +'</select></div>';
   html+='<h3 style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--bd)">Contacts &amp; Emails</h3>';
   html+='<div style="margin-bottom:10px">';
   g.records.forEach(function(r){
