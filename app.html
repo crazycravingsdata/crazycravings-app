@@ -211,6 +211,7 @@ tbody td{padding:8px 11px;vertical-align:middle}
   <div class="tab" onclick="goTab('quote')">📋 Quote</div>
   <div class="tab" onclick="goTab('qhist')">📁 Quotes Sent</div>
   <div class="tab" onclick="goTab('invoice')">📄 Invoice</div>
+  <div class="tab" onclick="goTab('agenda')">🚐 From Agenda<span id="agendaTabBadge" style="display:none;background:#dd0143;color:#fff;border-radius:999px;padding:1px 7px;font-size:11px;margin-left:6px;"></span></div>
   <div class="tab" onclick="goTab('istatus')">🔔 Invoice Status</div>
   <div class="tab" onclick="goTab('contacts')">👥 Contacts</div>
   <div class="tab" onclick="goTab('cash')">📊 Cash Book</div>
@@ -300,7 +301,7 @@ tbody td{padding:8px 11px;vertical-align:middle}
       <div class="sec"><h3>Quote Information</h3>
         <div class="r2">
           <div class="f"><label>Quote Number</label>
-            <div class="pfx"><span>#</span><input id="q-num" value="QT-001"></div></div>
+            <div class="pfx"><span>#</span><input id="q-num" oninput="qNumEditedByUser=true"></div></div>
           <div class="f"><label>Quote Date</label><input id="q-date" type="date"></div>
         </div>
         <div class="f"><label>PO# <small style="color:#aaa">optional</small></label><input id="q-po" placeholder="PO-45678"></div>
@@ -489,6 +490,19 @@ tbody td{padding:8px 11px;vertical-align:middle}
   </div>
 </div>
 
+<!-- FROM AGENDA: eventos já com Van atribuída no Scheduler, aguardando invoice -->
+<div class="panel" id="p-agenda">
+  <div class="tbar" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
+    <h2 style="font-size:15px;font-weight:700">Events from Agenda</h2>
+  </div>
+  <p style="color:var(--mut);font-size:13px;margin:4px 0 14px;">Events already scheduled in the Agenda (Van assigned) that don't have an invoice yet. Click one to pre-fill the Invoice tab.</p>
+  <table>
+    <thead><tr><th>Date</th><th>Time</th><th>Client</th><th>Quote #</th><th></th></tr></thead>
+    <tbody id="agendaEventsBody"></tbody>
+  </table>
+  <p id="agendaEventsEmptyMsg" style="display:none;color:var(--mut);padding:16px 0;">No events waiting for an invoice right now.</p>
+</div>
+
 <!-- INVOICE STATUS -->
 <div class="panel" id="p-istatus">
   <div class="tbar" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
@@ -645,76 +659,25 @@ function toggleHSTExempt(p){
   calcT(p);
 }
 
+var qNumEditedByUser=false; // vira true assim que a pessoa edita o número da cotação na mão
 function autoNum(p){
+  if(p==='q'&&qNumEditedByUser)return; // não sobrescreve um número editado manualmente
   var ed=document.getElementById(p+'-ed').value;
-  if(!ed)return;
-  var d=new Date(ed+'T12:00:00');
+  var d=ed?new Date(ed+'T12:00:00'):new Date(); // sem Event Date, usa hoje como fallback
   var mm=String(d.getMonth()+1).padStart(2,'0');
   var dd=String(d.getDate()).padStart(2,'0');
   var yy=String(d.getFullYear()).slice(2);
-  var num=mm+dd+yy;
+  var datePart=mm+dd+yy;
   var el=document.getElementById(p+'-num');
-  if(el)el.value=num;
-}
-function getTimeStr(p){
-  var sh=document.getElementById(p+'-tstart-h');
-  var sm=document.getElementById(p+'-tstart-m');
-  var sa=document.getElementById(p+'-tstart-ap');
-  var eh=document.getElementById(p+'-tend-h');
-  var em=document.getElementById(p+'-tend-m');
-  var ea=document.getElementById(p+'-tend-ap');
-  if(!sh)return'';
-  var sm2=sm?sm.value.replace(':',''):'00';
-  var em2=em?em.value.replace(':',''):'00';
-  return sh.value+':'+sm2+' '+sa.value+' - '+eh.value+':'+em2+' '+ea.value;
-}
-
-
-
-function autoFillDesc(p){
-  var svc=document.getElementById(p+'-es').value;
-  var items=S[p].items;
-  // Find or set description items based on service
-  if(svc==='Ice Cream Sundae'){
-    // Ensure first non-travel item has Ice Cream Sundae
-    var idx=items.findIndex(function(it){return it.desc!=='Travel fee';});
-    if(idx>=0){items[idx].desc='Ice Cream Sundae';}
-    else{items.push({desc:'Ice Cream Sundae',ppp:'',qty:'',amt:''});}
-    // Remove any Ice Cream Only line
-    S[p].items=items.filter(function(it){return it.desc!=='Ice Cream Only';});
-  } else if(svc==='Ice Cream Only'){
-    var idx=items.findIndex(function(it){return it.desc!=='Travel fee';});
-    if(idx>=0){items[idx].desc='Ice Cream Only';}
-    else{items.push({desc:'Ice Cream Only',ppp:'',qty:'',amt:''});}
-    S[p].items=items.filter(function(it){return it.desc!=='Ice Cream Sundae';});
-  } else if(svc==='Ice Cream Sundaes & Ice Cream Only'){
-    // Remove any single-service lines, add both
-    S[p].items=items.filter(function(it){return it.desc==='Travel fee';});
-    S[p].items.push({desc:'Ice Cream Sundae',ppp:'',qty:'',amt:''});
-    S[p].items.push({desc:'Ice Cream Only',ppp:'',qty:'',amt:''});
+  if(!el)return;
+  if(p==='q'){
+    // QT-MMDDYY-001 em diante, avancando a sequencia se ja houver cotacoes nessa data
+    var prefix='QT-'+datePart+'-';
+    var count=quotes.filter(function(x){return (x.inv_num||'').indexOf(prefix)===0;}).length;
+    el.value=prefix+String(count+1).padStart(3,'0');
+  } else {
+    el.value=datePart;
   }
-  renderItems(p);
-}
-
-
-function toggleHSTExempt(p){
-  var cb=document.getElementById(p+'-hst-exempt');
-  var field=document.getElementById(p+'-hst-exempt-field');
-  if(!cb||!field)return;
-  field.style.display=cb.checked?'block':'none';
-  calcT(p);
-}
-
-function autoNum(p){
-  var ed=document.getElementById(p+'-ed').value;
-  if(!ed)return;
-  var d=new Date(ed+'T12:00:00');
-  var mm=String(d.getMonth()+1).padStart(2,'0');
-  var dd=String(d.getDate()).padStart(2,'0');
-  var yy=String(d.getFullYear()).slice(2);
-  var num=mm+dd+yy;
-  var el=document.getElementById(p+'-num');
-  if(el)el.value=num;
 }
 function getTimeStr(p){
   var sh=document.getElementById(p+'-tstart-h');
@@ -763,6 +726,7 @@ function showApp(){
   renderItems('q');renderItems('i');
   renderQH();renderIS();renderCB();renderCT();updateStats();renderDash();buildClientDB();
   loadFirebase();
+  autoNum('q'); // preenche o número da cotação já ao abrir o app
 }
 
 function doLogout(){
@@ -780,7 +744,7 @@ function closeCfg(){document.getElementById('cfg-modal').classList.remove('on');
 function saveWH(){var u=document.getElementById('cfg-url').value.trim();if(u){wh=u;localStorage.setItem('cc_wh',u);toast('Saved!');}closeCfg();}
 
 // ─── TABS ────────────────────────────────────────────────────────
-var TABS=['dash','quote','qhist','invoice','istatus','contacts','cash'];
+var TABS=['dash','quote','qhist','invoice','agenda','istatus','contacts','cash'];
 function goTab(name){
   document.querySelectorAll('.tab').forEach(function(t,i){t.classList.toggle('on',TABS[i]===name);});
   document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('on');});
@@ -790,6 +754,7 @@ function goTab(name){
   if(name==='qhist')renderQH();
   if(name==='istatus')renderIS();
   if(name==='contacts')renderCT();
+  if(name==='agenda')renderAgendaEventsTab();
 }
 
 // ─── TOAST ───────────────────────────────────────────────────────
@@ -941,10 +906,11 @@ function guardInvoiceNum(d){
   return true;
 }
 function genPDF(p,isQ){
+  if(isQ&&!document.getElementById('q-num').value.trim())autoNum('q'); // rede de segurança: nunca gera sem número
   var d=collect(p);
   if(!isQ&&!guardInvoiceNum(d))return null;
   makePDF(d,isQ);
-  if(isQ){saveQEntry(d);saveContact(d,'Quote');}
+  if(isQ){saveQEntry(d);saveContact(d,'Quote');pushEventFromQuote(d);}
   else{saveISEntry(d);saveContact(d,'Invoice');editingInvoiceNum=d.inv_num;}
   return d;
 }
@@ -1007,7 +973,7 @@ function makePDF(d,isQ){
   function xp(mm){return mm*(PW/210);}
   function yp(mm){return mm*(PH/297);}
   var L=xp(18),R=xp(185),LH=15;
-  var img=isQ?QT_TMPL:INV_TMPL;
+  var img=isQ?(typeof QT_TMPL!=='undefined'?QT_TMPL:null):(typeof INV_TMPL!=='undefined'?INV_TMPL:null);
   if(img)doc.addImage(img,'PNG',0,0,PW,PH);
   // Header
   doc.setFont('helvetica','bold');doc.setFontSize(18);doc.setTextColor('#C0153A');
@@ -1168,7 +1134,7 @@ function fillInvoice(d,isExisting){
   var iField=document.getElementById('i-hst-exempt-field');if(iField)iField.style.display=d.hst_exempt?'block':'none';
   var iHstId=document.getElementById('i-hst-id');if(iHstId)iHstId.value=d.hst_id||'';
   calcT('i');
-  if(d.ev_time){var tm=d.ev_time.match(/(\d+):00 (AM|PM) - (\d+):00 (AM|PM)/);if(tm){var sh=document.getElementById('i-tstart-h');var sa=document.getElementById('i-tstart-ap');var eh=document.getElementById('i-tend-h');var ea=document.getElementById('i-tend-ap');if(sh)sh.value=tm[1];if(sa)sa.value=tm[2];if(eh)eh.value=tm[3];if(ea)ea.value=tm[4];}}
+  if(d.ev_time){var tm=d.ev_time.match(/(\d+):(\d{2}) (AM|PM) - (\d+):(\d{2}) (AM|PM)/);if(tm){var sh=document.getElementById('i-tstart-h');var sm=document.getElementById('i-tstart-m');var sa=document.getElementById('i-tstart-ap');var eh=document.getElementById('i-tend-h');var em=document.getElementById('i-tend-m');var ea=document.getElementById('i-tend-ap');if(sh)sh.value=tm[1];if(sm)sm.value=tm[2];if(sa)sa.value=tm[3];if(eh)eh.value=tm[4];if(em)em.value=tm[5];if(ea)ea.value=tm[6];}}
   S['i'].items=JSON.parse(JSON.stringify(d.items||[]));
   S['i'].shifts=JSON.parse(JSON.stringify(d.shifts||[]));
   renderItems('i');renderShifts('i');
@@ -1227,14 +1193,33 @@ function saveISEntry(d){
     e.status=iStatus[i].status||'unpaid';
     e.pay_method=iStatus[i].pay_method||'';
     e.received_date=iStatus[i].received_date||'';
-    e.sent_status=iStatus[i].sent_status;
-    e.in_cashbook=iStatus[i].in_cashbook;
+    e.sent_status=iStatus[i].sent_status||null;
+    e.in_cashbook=iStatus[i].in_cashbook||null;
     iStatus[i]=e;
   } else {
     iStatus.unshift(e);
   }
   localStorage.setItem('cc_istatus',JSON.stringify(iStatus));
   fbSave('istatus',d.inv_num,e);
+  // Vínculo com o Scheduler: se este invoice veio de um evento, grava o invoiceId
+  // de volta nele, junto com qualquer correção feita aqui (email, contato, endereço)
+  if(window._linkedEventId&&_db){
+    var attName=(d.client_att||'').replace(/^Att\.?\s*/i,'').trim();
+    var nameParts=attName.split(/\s+/).filter(Boolean);
+    var lastName=nameParts.length>1?nameParts.pop():'';
+    var firstName=nameParts.join(' ');
+    var cityParts=parseCityProvincePostal(d.client_city);
+    _db.collection('cc_events').doc(window._linkedEventId).update({
+      invoiceId:d.inv_num,
+      email:d.client_email||'',
+      contactName:firstName,
+      contactLastName:lastName,
+      addressStreet:d.client_addr||'',
+      addressCity:cityParts.city,
+      addressProvince:cityParts.province,
+      addressPostalCode:cityParts.postal
+    }).catch(function(){});
+  }
   toast('Invoice saved to Status! Due in '+netDays(d.ev_net)+' days ('+due.toISOString().slice(0,10)+')');
 }
 function recalcDueDates(){
@@ -2332,6 +2317,7 @@ function exportCSV(){
 function clr(p){
   if(!confirm('Clear all fields?'))return;
   if(p==='i')editingInvoiceNum=null;
+  if(p==='q')qNumEditedByUser=false;
   var ids=p==='i'?['i-num','i-po','i-cn','i-ca','i-city','i-catt','i-cemail','i-cemail2','i-cemail3','i-ed','i-edur','i-nop']:
                   ['q-num','q-po','q-cn','q-ca','q-city','q-catt','q-cemail','q-cemail2','q-cemail3','q-ed','q-edur','q-nop'];
   ids.forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
@@ -2347,13 +2333,227 @@ function clr(p){
   S[p].shifts=[];
   renderItems(p);renderShifts(p);
   if(p==='i')checkInvoiceNumLive();
+  if(p==='q')autoNum('q');
 }
 
-// ─── FIREBASE SYNC ───────────────────────────────────────────────
+// ─── VÍNCULO COM O SCHEDULER (ver /areas/crazy-cravings-integration) ──
+// Botão "Generate Invoice" no evento abre esta página com ?fromEvent=<id>
+function loadInvoiceFromEvent(){
+  var params=new URLSearchParams(window.location.search);
+  var eventId=params.get('fromEvent');
+  if(!eventId)return;
+  loadInvoiceFromEventId(eventId);
+}
+function loadInvoiceFromEventId(eventId){
+  if(!eventId||!_db)return;
+  _db.collection('cc_events').doc(eventId).get().then(function(doc){
+    if(!doc.exists)return;
+    var ev=doc.data();
+    var d={
+      client_name:ev.clientName||'',
+      client_addr:ev.addressStreet||'',
+      client_city:formatCityProvincePostal(ev.addressCity,ev.addressProvince,ev.addressPostalCode),
+      client_att:[ev.contactName,ev.contactLastName].filter(Boolean).join(' '),
+      client_email:ev.email||'',
+      ev_service:mapIceCreamTypeToService(ev.iceCreamType),
+      ev_dates:ev.date||'',
+      ev_dur:eventDurationLabel(ev.eventTime,ev.eventEndTime),
+      nop_min:ev.numberOfPeople||'',
+      ev_time:ev.eventTime&&ev.eventEndTime?fmtEvTime(ev.eventTime)+' - '+fmtEvTime(ev.eventEndTime):''
+    };
+    fillInvoice(d,false);
+    // pré-preenche os itens já cotados no evento — só o preço, a quantidade fica em branco
+    // pra ser preenchida manualmente depois de contar as pessoas presentes
+    var prefilledItems=[];
+    if(ev.travelFee) prefilledItems.push({desc:'Travel fee',ppp:'',qty:'',amt:ev.travelFee});
+    if(ev.priceSundae) prefilledItems.push({desc:'Ice Cream Sundae',ppp:ev.priceSundae,qty:'',amt:''});
+    if(ev.priceOnly) prefilledItems.push({desc:'Ice Cream Only',ppp:ev.priceOnly,qty:'',amt:''});
+    if(prefilledItems.length){
+      S['i'].items=prefilledItems;
+      renderItems('i');
+    }
+    goTab('invoice');
+    toast('Invoice pré-preenchido a partir do evento!');
+    // grava o vínculo de volta no evento assim que o invoice for gerado
+    window._linkedEventId=eventId;
+  }).catch(function(){});
+}
+// calcula '9:00 - 10:30' (formato 24h) -> '90 min Service Time'
+function eventDurationLabel(startT,endT){
+  var s=(startT||'').match(/^(\d{1,2}):(\d{2})/),e=(endT||'').match(/^(\d{1,2}):(\d{2})/);
+  if(!s||!e)return'';
+  var mins=(parseInt(e[1],10)*60+parseInt(e[2],10))-(parseInt(s[1],10)*60+parseInt(s[2],10));
+  if(mins<=0)return'';
+  return mins+' min Service Time';
+}
+
+// ─── ABA "FROM AGENDA": eventos já com Van, aguardando invoice ────
+var agendaEvents=[];
+function initAgendaEventsListener(){
+  if(!_db)return;
+  _db.collection('cc_events').where('invoiceId','==',null).onSnapshot(function(snap){
+    agendaEvents=[];
+    snap.forEach(function(doc){
+      var data=doc.data();
+      // só entram os já atribuídos a uma van (não os "Pending" do Scheduler)
+      // e que não tenham sido tirados manualmente da lista
+      if(data.vanId&&!data.hiddenFromAgendaTab){
+        agendaEvents.push(Object.assign({id:doc.id},data));
+      }
+    });
+    agendaEvents.sort(function(a,b){return (a.date||'').localeCompare(b.date||'');});
+    updateAgendaTabBadge();
+    renderAgendaEventsTab();
+  },function(){});
+}
+function updateAgendaTabBadge(){
+  var badge=document.getElementById('agendaTabBadge');
+  if(!badge)return;
+  if(agendaEvents.length>0){badge.textContent=agendaEvents.length;badge.style.display='inline-block';}
+  else{badge.style.display='none';}
+}
+function renderAgendaEventsTab(){
+  var tbody=document.getElementById('agendaEventsBody');
+  var emptyMsg=document.getElementById('agendaEventsEmptyMsg');
+  if(!tbody)return;
+  tbody.innerHTML='';
+  if(agendaEvents.length===0){emptyMsg.style.display='block';return;}
+  emptyMsg.style.display='none';
+  agendaEvents.forEach(function(ev){
+    var tr=document.createElement('tr');
+    var timeLabel=(ev.eventTime||'')+(ev.eventTime&&ev.eventEndTime?'–'+ev.eventEndTime:'');
+    tr.innerHTML='<td>'+(ev.date||'—')+'</td><td>'+timeLabel+'</td><td>'+(ev.clientName||'No name')+'</td>'+
+      '<td>'+(ev.quoteId?ev.quoteId.replace(/^#+/,''):'—')+'</td>'+
+      '<td style="white-space:nowrap;display:flex;gap:6px;">'+
+      '<button class="bg" onclick="loadInvoiceFromEventId(\''+ev.id+'\')">Use this event →</button>'+
+      '<button class="bg" title="Remove from this list (does not delete the event)" onclick="removeFromAgendaTab(\''+ev.id+'\')" style="color:var(--red);border-color:var(--red)">✕</button>'+
+      '</td>';
+    tbody.appendChild(tr);
+  });
+}
+function removeFromAgendaTab(eventId){
+  if(!_db)return;
+  if(!confirm('Remove this event from the "From Agenda" list? It stays on the Scheduler — you can still generate its invoice from there later.'))return;
+  _db.collection('cc_events').doc(eventId).update({hiddenFromAgendaTab:true}).catch(function(){});
+}
+
+// converte '14:30' -> '2:30 PM' pro formato usado no ev_time do fillInvoice
+function fmtEvTime(t24){
+  var m=(t24||'').match(/^(\d{1,2}):(\d{2})/);
+  if(!m)return'';
+  var h=parseInt(m[1],10);var ap=h>=12?'PM':'AM';var h12=h%12;if(h12===0)h12=12;
+  return h12+':'+m[2]+' '+ap;
+}
+
+// ─── VÍNCULO COM O SCHEDULER: cotação → evento pendente na Agenda ──
+// (ver /areas/crazy-cravings-integration) Ao gerar um Quote, cria/atualiza
+// um evento em cc_events sem Van/Driver/Helpers, com status "Unconfirmed",
+// pra que a equipe possa atribuí-los depois direto na Agenda.
+// ─── Ice Cream Type ↔ Service label (Scheduler usa códigos curtos, Invoice usa o texto do dropdown) ──
+function mapServiceToIceCreamType(label){
+  label=label||'';
+  const hasSundae=/sundae/i.test(label), hasOnly=/\bonly\b/i.test(label);
+  if(hasSundae&&hasOnly)return'both';
+  if(hasSundae)return'sundae';
+  if(hasOnly)return'only';
+  return'';
+}
+function mapIceCreamTypeToService(code){
+  return {sundae:'Ice Cream Sundae',only:'Ice Cream Only',both:'Ice Cream Sundaes & Ice Cream Only'}[code]||'';
+}
+function parseEvTimeRange(t){
+  var m=(t||'').match(/(\d{1,2}):(\d{2})\s*(AM|PM)\s*-\s*(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  if(!m)return{start:'09:00',end:'10:00'};
+  function to24(h,ap){h=parseInt(h,10)%12;if(/pm/i.test(ap))h+=12;return String(h).padStart(2,'0');}
+  return{start:to24(m[1],m[3])+':'+m[2],end:to24(m[4],m[6])+':'+m[5]};
+}
+function pushEventFromQuote(d,attempt){
+  attempt=attempt||0;
+  if(!d.ev_dates)return; // sem data de evento definida, nao ha o que agendar ainda
+  if(!_db){ if(attempt<10)setTimeout(function(){pushEventFromQuote(d,attempt+1);},1000); return; }
+  var times=parseEvTimeRange(d.ev_time);
+  var attName=(d.client_att||'').replace(/^Att\.?\s*/i,'').trim();
+  var nameParts=attName.split(/\s+/).filter(Boolean);
+  var contactLastName=nameParts.length>1?nameParts.pop():'';
+  var contactName=nameParts.join(' ');
+  var travelItem=(d.items||[]).find(function(it){return it.desc==='Travel fee';});
+  var sundaeItem=(d.items||[]).find(function(it){return it.desc==='Ice Cream Sundae';});
+  var onlyItem=(d.items||[]).find(function(it){return it.desc==='Ice Cream Only';});
+  var cityParts=parseCityProvincePostal(d.client_city);
+  var docId='evt_from_quote_'+d.inv_num.replace(/[^a-zA-Z0-9]/g,'_');
+  var content={
+    date:d.ev_dates,
+    eventTime:times.start,eventEndTime:times.end,
+    clientName:d.client_name||'',
+    email:d.client_email||'',
+    contactName:contactName,contactLastName:contactLastName,
+    addressStreet:d.client_addr||'',
+    addressCity:cityParts.city,
+    addressProvince:cityParts.province,
+    addressPostalCode:cityParts.postal,
+    numberOfPeople:d.nop_min?parseInt(d.nop_min,10):null,
+    iceCreamType:mapServiceToIceCreamType(d.ev_service),
+    travelFee:travelItem?getAmt(travelItem):0,
+    priceSundae:(sundaeItem&&sundaeItem.ppp!=='')?parseFloat(sundaeItem.ppp):0,
+    priceOnly:(onlyItem&&onlyItem.ppp!=='')?parseFloat(onlyItem.ppp):0,
+    quoteId:d.inv_num,origin:'quote',
+    updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+  };
+  var ref=_db.collection('cc_events').doc(docId);
+  ref.get().then(function(snap){
+    if(snap.exists){
+      // já existe: atualiza só os dados vindos da cotação, preserva Van/Driver/Helpers/status já atribuídos
+      ref.update(content).catch(function(){});
+    } else {
+      content.startTime=times.start;content.endTime=times.end;
+      content.vanId='';content.driverId=null;content.driver='';
+      content.helperIds=[];content.helpers=[];
+      content.phone='';
+      content.siteNotes='';content.notes='';
+      content.internalNotes='Criado automaticamente a partir da cotação '+d.inv_num.replace(/^#+/,'');
+      content.status='unconfirmed';
+      content.contactId=null;content.invoiceId=null;
+      content.createdAt=firebase.firestore.FieldValue.serverTimestamp();
+      ref.set(content).catch(function(){});
+    }
+  }).catch(function(){});
+}
+// monta "Hamilton, ON L8P 1A1" a partir dos campos separados do evento
+function formatCityProvincePostal(city,province,postal){
+  var cityProv=[city,province].filter(Boolean).join(', ');
+  return [cityProv,postal].filter(Boolean).join(' ');
+}
+// separa um texto livre tipo "Hamilton, ON L8P 1A1" em {city, province, postal}
+var CA_PROVINCES=['ON','AB','BC','MB','NB','NL','NS','NT','NU','PE','QC','SK','YT'];
+function parseCityProvincePostal(text){
+  text=(text||'').trim();
+  var postal='';
+  var postalMatch=text.match(/([A-Za-z]\d[A-Za-z])\s*(\d[A-Za-z]\d)\s*$/);
+  if(postalMatch){
+    postal=(postalMatch[1]+' '+postalMatch[2]).toUpperCase();
+    text=text.slice(0,postalMatch.index).trim();
+  }
+  text=text.replace(/,\s*$/,'').trim();
+  var province='';
+  var provMatch=text.match(/\b([A-Za-z]{2})\s*$/);
+  if(provMatch&&CA_PROVINCES.indexOf(provMatch[1].toUpperCase())>=0){
+    province=provMatch[1].toUpperCase();
+    text=text.slice(0,provMatch.index).trim();
+  }
+  var city=text.replace(/,\s*$/,'').trim();
+  return{city:city,province:province,postal:postal};
+}
+
+
 var _db=null;
 function fbSave(col,id,data){
   if(!_db)return;
-  try{_db.collection(col).doc(id.replace(/[^a-zA-Z0-9]/g,'_')).set(data);}catch(e){}
+  try{
+    _db.collection(col).doc(id.replace(/[^a-zA-Z0-9]/g,'_')).set(data)
+      .catch(function(err){ toast('⚠ Falha ao salvar no servidor: '+(err&&err.message?err.message:'erro desconhecido')); });
+  }catch(err){
+    toast('⚠ Falha ao salvar no servidor: '+(err&&err.message?err.message:'erro desconhecido'));
+  }
 }
 function fbDel(col,id){
   if(!_db)return;
@@ -2384,11 +2584,15 @@ function loadFirebase(){
             var data=snap.docs.map(function(d){return d.data();});
             localStorage.setItem(cols[col],JSON.stringify(data));
             if(col==='ledger'){ledger=data;renderCB();updateStats();renderDash();}
-            if(col==='quotes'){quotes=data;renderQH();}
+            if(col==='quotes'){quotes=data;renderQH();autoNum('q');}
             if(col==='istatus'){iStatus=data;renderIS();renderDash();buildClientDB();checkInvoiceNumLive();}
             if(col==='contacts'){contacts=data;renderCT();buildClientDB();}
           }).catch(function(){});
         });
+        // Vínculo com o Scheduler (ver /areas/crazy-cravings-integration):
+        // se veio de um evento (botão "Generate Invoice"), pré-preenche o invoice
+        loadInvoiceFromEvent();
+        initAgendaEventsListener();
       }catch(e){}
     };
     s2.onerror=function(){};
