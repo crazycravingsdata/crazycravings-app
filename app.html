@@ -48,6 +48,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;ba
 .f label{display:block;font-size:11px;color:var(--mut);margin-bottom:3px;font-weight:600}
 .f input,.f select{width:100%;padding:8px 10px;border:1.5px solid var(--bd);border-radius:var(--rad-xs);font-size:13px;transition:border-color .15s var(--ease),box-shadow .15s var(--ease);outline:none;background:#fff}
 .f input:focus,.f select:focus{border-color:var(--red);box-shadow:0 0 0 3px var(--red-lt)}
+.chipGroup{display:flex;flex-wrap:wrap;gap:6px}
+.chipBtn{border:1.5px solid var(--bd);background:#fff;color:var(--txt);padding:7px 12px;border-radius:999px;font-size:12.5px;font-weight:600;cursor:pointer;transition:border-color .15s var(--ease),background .15s var(--ease),color .15s var(--ease)}
+.chipBtn:hover{border-color:var(--red)}
+.chipBtn.sel{background:var(--red);border-color:var(--red);color:#fff}
 .r2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .pfx{display:flex;align-items:center;border:1.5px solid var(--bd);border-radius:var(--rad-xs);overflow:hidden;transition:border-color .15s var(--ease),box-shadow .15s var(--ease)}
 .pfx:focus-within{border-color:var(--red);box-shadow:0 0 0 3px var(--red-lt)}
@@ -254,7 +258,7 @@ tbody td{padding:8px 11px;vertical-align:middle}
     <div id="dash-overdue-list"></div>
   </div>
   <div id="dash-duesoon-box" class="dash-alert duesoon" style="display:none">
-    <h3>🟡 <span id="dash-duesoon-title">Due in the Next 5 Days</span></h3>
+    <h3>🟡 <span id="dash-duesoon-title">Due in the Next 10 Days</span></h3>
     <div id="dash-duesoon-list"></div>
   </div>
   <div class="chart-grid">
@@ -307,7 +311,7 @@ tbody td{padding:8px 11px;vertical-align:middle}
         <div class="f"><label>PO# <small style="color:#aaa">optional</small></label><input id="q-po" placeholder="PO-45678"></div>
       </div>
       <div class="sec"><h3>Client (Quote To)</h3>
-        <div class="f"><label>Name / Company</label><input id="q-cn" list="clientsList" placeholder="Sunshine Events Ltd." oninput="fillFromClientDB('q')"></div>
+        <div class="f"><label>Name / Company</label><input id="q-cn" list="clientsList" autocomplete="off" placeholder="Sunshine Events Ltd." oninput="fillFromClientDB('q')"></div>
         <div class="f"><label>Address</label><input id="q-ca" placeholder="100 Festival Blvd"></div>
         <div class="f"><label>City</label><input id="q-city" placeholder="Burlington ON"></div>
         <div class="f"><label>Contact</label>
@@ -323,6 +327,9 @@ tbody td{padding:8px 11px;vertical-align:middle}
           <option>Ice Cream Only</option>
           <option>Ice Cream Sundaes &amp; Ice Cream Only</option>
         </select></div>
+        <div class="f"><label>Event Type</label>
+          <div class="chipGroup" id="q-etype-group"></div>
+        </div>
         <div class="f"><label>NET Days</label><select id="q-net">
           <option>NET 15</option><option selected>NET 30</option><option>NET 45</option><option>NET 60</option>
         </select></div>
@@ -424,7 +431,7 @@ tbody td{padding:8px 11px;vertical-align:middle}
         <div class="f"><label>PO# <small style="color:#aaa">optional</small></label><input id="i-po" placeholder="PO-45678"></div>
       </div>
       <div class="sec"><h3>Client (Bill To)</h3>
-        <div class="f"><label>Name / Company</label><input id="i-cn" list="clientsList" placeholder="Sunshine Events Ltd." oninput="fillFromClientDB('i')"></div>
+        <div class="f"><label>Name / Company</label><input id="i-cn" list="clientsList" autocomplete="off" placeholder="Sunshine Events Ltd." oninput="fillFromClientDB('i')"></div>
         <div class="f"><label>Address</label><input id="i-ca" placeholder="100 Festival Blvd"></div>
         <div class="f"><label>City</label><input id="i-city" placeholder="Burlington ON"></div>
         <div class="f"><label>Contact</label>
@@ -440,6 +447,9 @@ tbody td{padding:8px 11px;vertical-align:middle}
           <option>Ice Cream Only</option>
           <option>Ice Cream Sundaes &amp; Ice Cream Only</option>
         </select></div>
+        <div class="f"><label>Event Type</label>
+          <div class="chipGroup" id="i-etype-group"></div>
+        </div>
         <div class="f"><label>NET Days</label><select id="i-net">
           <option>NET 15</option><option selected>NET 30</option><option>NET 45</option><option>NET 60</option>
         </select></div>
@@ -612,8 +622,8 @@ tbody td{padding:8px 11px;vertical-align:middle}
 <script>
 // ─── DATA ────────────────────────────────────────────────────────
 var S={
-  q:{items:[{desc:'Travel fee',ppp:'',qty:'',amt:170}],shifts:[]},
-  i:{items:[{desc:'Travel fee',ppp:'',qty:'',amt:170}],shifts:[]}
+  q:{items:[{desc:'Travel fee',ppp:'',qty:'',amt:170}],shifts:[],eventType:''},
+  i:{items:[{desc:'Travel fee',ppp:'',qty:'',amt:170}],shifts:[],eventType:''}
 };
 var ledger=JSON.parse(localStorage.getItem('cc_ledger')||'[]');
 var quotes=JSON.parse(localStorage.getItem('cc_quotes')||'[]');
@@ -724,6 +734,7 @@ function showApp(){
   var t=new Date().toISOString().slice(0,10);
   ['q-date','i-date'].forEach(function(id){document.getElementById(id).value=t;});
   renderItems('q');renderItems('i');
+  renderEventTypeGroup('q');renderEventTypeGroup('i');
   renderQH();renderIS();renderCB();renderCT();updateStats();renderDash();buildClientDB();
   loadFirebase();
   autoNum('q'); // preenche o número da cotação já ao abrir o app
@@ -773,7 +784,22 @@ function getAmt(it){
 }
 function esc(v){return String(v||'').replace(/"/g,'&quot;');}
 function jsEsc(v){return String(v||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
-var EVENT_TYPES=['Corporate','Wedding','Birthday Party','Public Event','Film/TV Production','Other'];
+var EVENT_TYPES=['Corporate','School','Movie Shoot','Wedding','Birthday Party','Public Event','Other'];
+
+// ─── Event Type (formulário principal de Quote/Invoice) ───────────
+var EVENT_TYPE_OPTIONS=['Corporate','School','Movie Shoot','Wedding','Birthday Party','Public Event'];
+function renderEventTypeGroup(p){
+  var grid=document.getElementById(p+'-etype-group');
+  if(!grid)return;
+  grid.innerHTML=EVENT_TYPE_OPTIONS.map(function(t){
+    var sel=S[p].eventType===t;
+    return '<button type="button" class="chipBtn'+(sel?' sel':'')+'" onclick="selectEventType(\''+p+'\',\''+t+'\')">'+t+'</button>';
+  }).join('');
+}
+function selectEventType(p,val){
+  S[p].eventType=(S[p].eventType===val)?'':val; // clica de novo pra desmarcar
+  renderEventTypeGroup(p);
+}
 function renderItems(p){
   var el=document.getElementById(p+'-items');
   if(!el)return;
@@ -865,7 +891,7 @@ function collect(p){
     client_email:g(p+'-cemail'),
     client_email2:g(p+'-cemail2'),
     client_email3:g(p+'-cemail3'),
-    ev_service:g(p+'-es'),ev_dates:g(p+'-ed'),ev_dur:g(p+'-edur'),
+    ev_service:g(p+'-es'),event_type:S[p].eventType||'',ev_dates:g(p+'-ed'),ev_dur:g(p+'-edur'),
     ev_time:getTimeStr(p),
     ev_net:g(p+'-net')||'NET 30',
     hst_exempt:hstEx,
@@ -1137,7 +1163,8 @@ function fillInvoice(d,isExisting){
   if(d.ev_time){var tm=d.ev_time.match(/(\d+):(\d{2}) (AM|PM) - (\d+):(\d{2}) (AM|PM)/);if(tm){var sh=document.getElementById('i-tstart-h');var sm=document.getElementById('i-tstart-m');var sa=document.getElementById('i-tstart-ap');var eh=document.getElementById('i-tend-h');var em=document.getElementById('i-tend-m');var ea=document.getElementById('i-tend-ap');if(sh)sh.value=tm[1];if(sm)sm.value=tm[2];if(sa)sa.value=tm[3];if(eh)eh.value=tm[4];if(em)em.value=tm[5];if(ea)ea.value=tm[6];}}
   S['i'].items=JSON.parse(JSON.stringify(d.items||[]));
   S['i'].shifts=JSON.parse(JSON.stringify(d.shifts||[]));
-  renderItems('i');renderShifts('i');
+  S['i'].eventType=d.event_type||'';
+  renderItems('i');renderShifts('i');renderEventTypeGroup('i');
   checkInvoiceNumLive();
 }
 function renderQH(){
@@ -2225,14 +2252,14 @@ function renderDash(){
     box.querySelector('h3').innerHTML='🟢 <span>All invoices up to date</span>';
     listEl.innerHTML='<div class="dash-row" style="border:none;color:var(--mut)">No overdue invoices right now.</div>';
   }
-  // Due Soon box — invoices unpaid and due within the next 5 days (not yet overdue)
-  var dueSoon=nonRepl.filter(function(e){var dv=daysOver(e.due_date);return e.status==='unpaid'&&dv<=0&&dv>=-5;});
+  // Due Soon box — invoices unpaid and due within the next 10 days (not yet overdue)
+  var dueSoon=nonRepl.filter(function(e){var dv=daysOver(e.due_date);return e.status==='unpaid'&&dv<=0&&dv>=-10;});
   dueSoon.sort(function(a,b){return daysOver(b.due_date)-daysOver(a.due_date);});
   var dsBox=document.getElementById('dash-duesoon-box');
   var dsList=document.getElementById('dash-duesoon-list');
   if(dueSoon.length){
     dsBox.style.display='block';
-    dsBox.querySelector('h3').innerHTML='🟡 <span>'+dueSoon.length+' Invoice'+(dueSoon.length>1?'s':'')+' Due in the Next 5 Days</span>';
+    dsBox.querySelector('h3').innerHTML='🟡 <span>'+dueSoon.length+' Invoice'+(dueSoon.length>1?'s':'')+' Due in the Next 10 Days</span>';
     dsList.innerHTML=dueSoon.map(function(e){
       var du=-daysOver(e.due_date);
       var dueLabel=du===0?'Due today':du===1?'Due tomorrow':'Due in '+du+' days';
@@ -2331,7 +2358,8 @@ function clr(p){
   ['tstart-h','tstart-ap','tend-h','tend-ap'].forEach(function(f){var el=document.getElementById(p+'-'+f);if(el){if(f==='tstart-h')el.value='9';if(f==='tend-h')el.value='11';if(f.endsWith('ap'))el.value=f.startsWith('ts')?'AM':'PM';}});
   S[p].items=[{desc:'Travel fee',ppp:'',qty:'',amt:170}];
   S[p].shifts=[];
-  renderItems(p);renderShifts(p);
+  S[p].eventType='';
+  renderItems(p);renderShifts(p);renderEventTypeGroup(p);
   if(p==='i')checkInvoiceNumLive();
   if(p==='q')autoNum('q');
 }
