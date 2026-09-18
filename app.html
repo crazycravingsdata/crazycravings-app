@@ -123,6 +123,7 @@ tbody td{padding:8px 11px;vertical-align:middle}
 .dot.g{background:#1a8a4a}.dot.y{background:#f59e0b}.dot.r{background:#ef4444}.dot.b{background:#888}
 .empty{text-align:center;padding:32px;color:var(--mut)}
 .editin{border:1.5px solid transparent;border-radius:7px;padding:4px 6px;font-size:12px;width:100%;background:transparent;outline:none;transition:border-color .15s var(--ease),background .15s var(--ease);font-family:inherit;color:inherit}
+.ct-readonly{padding:4px 6px;font-size:12px;color:var(--txt);min-height:20px}
 .editin:hover{border-color:var(--bd);background:#fff}
 .editin:focus{border-color:var(--red);background:#fff;box-shadow:0 0 0 3px var(--red-lt)}
 .toast{display:none;position:fixed;bottom:20px;right:20px;background:linear-gradient(120deg,#1a8a4a,#136536);color:#fff;padding:11px 18px;border-radius:12px;font-size:13px;font-weight:600;z-index:300;box-shadow:0 10px 30px rgba(19,101,54,.3);animation:toastin .2s var(--ease)}
@@ -764,7 +765,7 @@ function goTab(name){
   if(name==='cash'){renderCB();updateStats();}
   if(name==='qhist')renderQH();
   if(name==='istatus')renderIS();
-  if(name==='contacts')renderCT();
+  if(name==='contacts'){ctEditMode=false;editingContactIdLock=null;renderCT();}
   if(name==='agenda')renderAgendaEventsTab();
 }
 
@@ -961,11 +962,30 @@ function emailInvoice(p){
   var contact=g(p+'-catt');
   sendInvoiceEmail({to:to,num:num,contact:contact});
 }
+function sendLateFeeEmail(opts){
+  var toEncoded=(opts.to||'').split(',').map(function(x){return encodeURIComponent(x.trim());}).filter(Boolean).join(',');
+  if(!toEncoded){toast('⚠ No client email on file for this invoice — add one in Contacts first.');return;}
+  var subject='Updated Invoice #'+opts.num+' — Late Fee Applied — Crazy Cravings';
+  var body='Hi '+(opts.contact||'there')+',\n\n'
+    +"We're just touching base regarding the payment for the ice cream service for our accounting purposes.\n\n"
+    +'As a friendly reminder, our payment terms are net '+opts.netDays+' days. Since the payment is now past the '+opts.netDays+'-day term, we have attached an updated invoice reflecting the additional late fee.\n\n'
+    +'Please let us know if you have any questions.\n\n'
+    +'Thank you so much,\n\n'
+    +'Andrea Coates\nCrazy Cravings Inc.';
+  toast('Opening your email app — remember to attach the updated invoice PDF!');
+  window.location.href='mailto:'+toEncoded+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
+}
 function emailInvoiceFromStatus(e){
   var d=e.data||{};
   var to=[d.client_email,d.client_email2,d.client_email3].filter(Boolean).join(',');
   var contact=(e.client_att||d.client_att||'').replace(/^Att\.\s*/,'');
-  sendInvoiceEmail({to:to,num:(e.inv_num||'').replace(/^#+/,''),contact:contact});
+  var isLateFee=d.is_late_fee||/-LATE\d*$/.test(e.inv_num||'');
+  if(isLateFee){
+    var net=d.ev_net||e.ev_net||'NET 30';
+    sendLateFeeEmail({to:to,num:(e.inv_num||'').replace(/^#+/,''),contact:contact,netDays:netDays(net)});
+  } else {
+    sendInvoiceEmail({to:to,num:(e.inv_num||'').replace(/^#+/,''),contact:contact});
+  }
 }
 function sendDueSoonEmail(opts){
   var toEncoded=(opts.to||'').split(',').map(function(x){return encodeURIComponent(x.trim());}).filter(Boolean).join(',');
@@ -1359,7 +1379,9 @@ function renderIS(){
       e.status=this.value;localStorage.setItem('cc_istatus',JSON.stringify(iStatus));fbSave('istatus',e.inv_num,e);renderIS();
     });
     t0.appendChild(dotSpan);t0.appendChild(stSel);
-    var t1=document.createElement('td');t1.innerHTML='<strong>'+(e.inv_num||'-')+'</strong>';
+    var t1=document.createElement('td');t1.innerHTML='<strong>'+(e.inv_num||'-')+'</strong>';t1.style.cursor='pointer';
+    t1.title='Click to view details';
+    t1.addEventListener('click',function(){openInvoiceDetailModal(e.inv_num);});
     // Sent? checkbox (replaces old dropdown to save width)
     var tSent=document.createElement('td');tSent.style.textAlign='center';
     var sentChk=document.createElement('input');sentChk.type='checkbox';sentChk.title='Mark as sent';
@@ -1371,7 +1393,8 @@ function renderIS(){
       fbSave('istatus',e.inv_num,e);
     });
     tSent.appendChild(sentChk);
-    var t2=document.createElement('td');t2.textContent=e.client_name||'-';t2.title=e.client_name||'';
+    var t2=document.createElement('td');t2.textContent=e.client_name||'-';t2.title='Click to view details';t2.style.cursor='pointer';
+    t2.addEventListener('click',function(){openInvoiceDetailModal(e.inv_num);});
     var t3=document.createElement('td');t3.textContent=e.client_att||'-';t3.title=e.client_att||'';t3.style.cssText='color:#888;font-size:11px';
     var t4=document.createElement('td');t4.textContent=e.send_date||'-';
     var t5=document.createElement('td');
@@ -1437,6 +1460,9 @@ function renderIS(){
     var mb=document.createElement('button');mb.className='cvt';mb.style.background='#2563eb';mb.textContent='✉';mb.title='Email invoice to client';
     mb.addEventListener('click',function(){emailInvoiceFromStatus(e);});
     t9.appendChild(mb);
+    var sb=document.createElement('button');sb.className='cvt';sb.style.background='#7c3aed';sb.textContent='📄';sb.title='Generate Statement (balance remaining)';
+    sb.addEventListener('click',function(){genStatement(e.inv_num);});
+    t9.appendChild(sb);
     var eb=document.createElement('button');eb.className='cvt s';eb.textContent='✏';
     eb.addEventListener('click',function(){fillInvoice(e.data,true);goTab('invoice');toast('Edit invoice and regenerate PDF.');});
     t9.appendChild(eb);
@@ -1666,6 +1692,80 @@ function genReceipt(num){
   toast('Receipt generated!');
 }
 
+function genStatement(num){
+  var en=iStatus.find(function(e){return e.inv_num===num;});
+  if(!en){toast('Invoice not found.');return;}
+  var d=en.data;
+  var totalDue=en.total||0;
+  var current=(en.amount_received!=null)?en.amount_received:'';
+  var input=prompt('Amount received so far for '+num+' (invoice total: $ '+totalDue.toFixed(2)+'):',current);
+  if(input===null)return; // cancelado
+  var received=parseFloat(input);
+  if(isNaN(received)||received<0){toast('Enter a valid amount.');return;}
+  en.amount_received=received;
+  localStorage.setItem('cc_istatus',JSON.stringify(iStatus));
+  fbSave('istatus',num,en);
+  renderIS();
+  var balance=Math.max(0,totalDue-received);
+  if(typeof window.jspdf==='undefined'){toast('PDF not available - check internet');return;}
+  var doc=new window.jspdf.jsPDF({orientation:'portrait',unit:'pt',format:'a4'});
+  var PW=595.28,PH=841.89;
+  function xp(mm){return mm*(PW/210);}
+  function yp(mm){return mm*(PH/297);}
+  var L=xp(18),R=xp(185),LH=15;
+  doc.setFont('helvetica','bold');doc.setFontSize(20);doc.setTextColor('#C0153A');
+  doc.text('Crazy Cravings',L,yp(24));
+  doc.setFont('helvetica','bold');doc.setFontSize(16);doc.setTextColor('#333');
+  doc.text('STATEMENT OF ACCOUNT',R,yp(40),{align:'right'});
+  doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor('#666');
+  doc.text('Statement date: '+new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}),R,yp(48),{align:'right'});
+  var byS=yp(66);
+  doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor('#C0153A');
+  doc.text('Bill To:',L,byS);
+  var bL=[d.client_name,d.client_addr,d.client_city,d.client_att].filter(Boolean);
+  doc.setFont('helvetica','normal');doc.setTextColor('#333');
+  bL.forEach(function(ln,i){doc.text(ln,L,byS+(i+1)*LH);});
+  var tT=byS+(bL.length+2)*LH;
+  var tW=R-L,rH=22,hH=22;
+  doc.setDrawColor('#333');doc.setLineWidth(1.5);doc.rect(L,tT-hH,tW,hH,'S');
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor('#333');
+  doc.text('DESCRIPTION',L+8,tT-7);doc.text('AMOUNT',R-8,tT-7,{align:'right'});
+  var rows=[
+    ['Invoice '+(d.inv_num||num)+(d.ev_dates?' — '+d.ev_dates:''),totalDue],
+    ['Amount Received',-received]
+  ];
+  rows.forEach(function(r,idx){
+    var ry=tT+idx*rH;
+    if(idx%2===0){doc.setFillColor(254,240,243);doc.rect(L,ry,tW,rH,'F');}
+    doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor('#333');
+    doc.text(r[0],L+8,ry+14);
+    doc.text((r[1]<0?'- $ ':'$ ')+Math.abs(r[1]).toFixed(2),R-8,ry+14,{align:'right'});
+    doc.setDrawColor('#E0E0E0');doc.setLineWidth(0.2);doc.line(L,ry,R,ry);
+  });
+  var bY=tT+rows.length*rH;
+  doc.setDrawColor('#333');doc.setLineWidth(1.5);doc.rect(L,tT-hH,tW,hH+rows.length*rH,'S');
+  var totRow=bY+30;
+  doc.setFont('helvetica','bold');doc.setFontSize(14);
+  doc.setTextColor(balance>0?'#C0153A':'#1a8a4a');
+  doc.text('Balance Remaining',L,totRow);
+  doc.text('$ '+balance.toFixed(2),R,totRow,{align:'right'});
+  doc.setDrawColor('#CCC');doc.setLineWidth(0.4);doc.line(L,totRow+8,R,totRow+8);
+  var noteY=totRow+34;
+  doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor('#555');
+  if(balance>0){
+    doc.text('This statement reflects a payment discrepancy on invoice '+(d.inv_num||num)+'.',L,noteY);
+    doc.text('Please remit the remaining balance of $ '+balance.toFixed(2)+' at your earliest convenience.',L,noteY+15);
+  } else {
+    doc.text('This invoice is fully paid. No balance remaining.',L,noteY);
+  }
+  var fy=noteY+50;
+  doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor('#555');
+  doc.text('If you have any questions, contact Jeff Coates, (905) 906-8657',L,fy);
+  var fn=((d.inv_num||'STMT')+'-STATEMENT'+(d.client_name?' - '+d.client_name:'')).replace(/[^\w\s#-]/g,'_');
+  doc.save(fn+'.pdf');
+  toast('Statement generated! Balance remaining: $ '+balance.toFixed(2));
+}
+
 function sendToCB(num){
   var en=iStatus.find(function(e){return e.inv_num===num;});
   if(!en)return;
@@ -1731,6 +1831,11 @@ function genLate(num){
   d.hst_exempt=false;
   d.hst_id='';
   d.inv_num=baseNum+'-LATE'+(lateCount+1);
+  // Invoice date passa a ser a data em que o Late Fee está sendo gerado
+  var todayRaw=new Date().toISOString().slice(0,10);
+  d.inv_date_raw=todayRaw;
+  d.inv_date=new Date(todayRaw+'T12:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+  d.is_late_fee=true;
 
   // Mark original invoice as "replaced"
   en.status='replaced';
@@ -1751,6 +1856,72 @@ function genLate(num){
 
   goTab('invoice');
   toast('Late Fee $ '+newFee.toFixed(2)+' | No HST (financial charge) | New balance: $ '+newRunningTotal.toFixed(2));
+}
+function openInvoiceDetailModal(invNum){
+  var en=iStatus.find(function(e){return e.inv_num===invNum;});
+  if(!en)return;
+  var d=en.data||{};
+  var ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:999;display:flex;align-items:center;justify-content:center;padding:20px';
+  var itemsHtml=(d.items||[]).map(function(it){
+    return '<div style="display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0;border-bottom:1px solid #f2f2f5"><span>'+esc(it.desc||'')+'</span><span>$ '+getAmt(it).toFixed(2)+'</span></div>';
+  }).join('');
+  var emails=[d.client_email,d.client_email2,d.client_email3].filter(Boolean).join(', ');
+  var eventWhen=[d.ev_dates,d.ev_time].filter(Boolean).join(' · ');
+  var isLateFee=d.is_late_fee||/-LATE\d*$/.test(en.inv_num||'');
+  function row(label,val){return val?'<div><b>'+label+':</b> '+esc(String(val))+'</div>':'';}
+  ov.innerHTML='<div style="background:#fff;border-radius:14px;padding:26px 28px;max-width:480px;width:100%;max-height:88vh;overflow-y:auto">'
+    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px"><h2 style="font-size:19px;margin:0">'+esc(en.inv_num||'-')+(isLateFee?' <span style="font-size:11px;font-weight:700;color:#ef4444;background:#fdeaea;padding:2px 8px;border-radius:6px;vertical-align:middle">LATE FEE</span>':'')+'</h2>'
+    +'<button id="ivm-close" style="border:none;background:transparent;font-size:20px;cursor:pointer;color:#999">×</button></div>'
+    +'<div style="color:var(--mut);font-size:13px;margin-bottom:16px">'+esc(en.client_name||'-')+(en.client_att?' · '+esc(en.client_att):'')+'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;margin-bottom:16px;font-size:12.5px">'
+    +row('Invoice Date',d.inv_date)
+    +row('PO#',d.po_number)
+    +row('Sent',en.send_date)
+    +row('Due',en.due_date)
+    +row('Address',d.client_addr)
+    +row('City',d.client_city)
+    +row('Email',emails)
+    +row('Event Type',d.event_type)
+    +row('Service',d.ev_service)
+    +row('Event',eventWhen)
+    +row('# People',d.nop_min)
+    +row('Terms',d.ev_net)
+    +row('HST',d.hst_exempt?'Exempt':'13%')
+    +'</div>'
+    +(itemsHtml?'<div style="margin-bottom:10px"><h3 style="font-size:10px;text-transform:uppercase;color:var(--mut);margin-bottom:6px">Line Items</h3>'+itemsHtml+'</div>':'')
+    +'<div style="display:flex;flex-direction:column;gap:3px;margin-bottom:16px;font-size:12.5px;padding-top:6px">'
+    +row('Subtotal',d.subtotal!=null?'$ '+d.subtotal.toFixed(2):'')
+    +row('HST',d.hst!=null?'$ '+d.hst.toFixed(2):'')
+    +(d.deposit?row('Deposit',' - $ '+d.deposit.toFixed(2)):'')
+    +'<div style="font-weight:800;font-size:14px;margin-top:4px"><b>Total:</b> $ '+(en.total||0).toFixed(2)+'</div>'
+    +row('Received',en.amount_received!=null?'$ '+en.amount_received.toFixed(2):'')
+    +'</div>'
+    +'<div class="f" style="margin-bottom:16px"><label>Status</label><select id="ivm-status" class="editin" style="border:1.5px solid var(--bd)">'
+    +'<option value="unpaid"'+(en.status==='unpaid'?' selected':'')+'>Unpaid</option>'
+    +'<option value="paid"'+(en.status==='paid'?' selected':'')+'>Paid</option>'
+    +'<option value="replaced"'+(en.status==='replaced'?' selected':'')+'>Replaced</option>'
+    +'</select></div>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+    +'<button id="ivm-pdf" class="cvt" style="flex:1 1 100%;background:#1a8a4a">📄 Generate Invoice PDF</button>'
+    +'<button id="ivm-edit" class="cvt s" style="flex:1">✏ Edit</button>'
+    +'<button id="ivm-email" class="cvt" style="flex:1;background:#2563eb;color:#fff">✉ Email</button>'
+    +'<button id="ivm-del" class="cvt o" style="flex:1">🗑 Delete</button>'
+    +'</div></div>';
+  document.body.appendChild(ov);
+  ov.addEventListener('click',function(e){if(e.target===ov)ov.remove();});
+  ov.querySelector('#ivm-close').addEventListener('click',function(){ov.remove();});
+  ov.querySelector('#ivm-pdf').addEventListener('click',function(){makePDF(d,false);});
+  ov.querySelector('#ivm-status').addEventListener('change',function(){
+    en.status=this.value;
+    localStorage.setItem('cc_istatus',JSON.stringify(iStatus));
+    fbSave('istatus',en.inv_num,en);
+    renderIS();
+    toast('Status updated!');
+  });
+  ov.querySelector('#ivm-edit').addEventListener('click',function(){ov.remove();fillInvoice(en.data,true);goTab('invoice');toast('Edit invoice and regenerate PDF.');});
+  ov.querySelector('#ivm-email').addEventListener('click',function(){ov.remove();emailInvoiceFromStatus(en);});
+  ov.querySelector('#ivm-del').addEventListener('click',function(){ov.remove();confirmDel(en.inv_num);});
 }
 function confirmDel(num){
   var ov=document.createElement('div');
@@ -1792,7 +1963,14 @@ function groupContacts(){
   return groups;
 }
 var ctSelectedCompany=null;
-function selectClient(key){ctSelectedCompany=key;renderCT();}
+var ctEditMode=false;
+var editingContactIdLock=null;
+function selectClient(key){ctSelectedCompany=key;ctEditMode=false;editingContactIdLock=null;renderCT();}
+function toggleContactEditMode(on){
+  ctEditMode=!!on;
+  editingContactIdLock=ctEditMode?ctSelectedCompany:null;
+  renderCT();
+}
 function addNewClient(){
   var name=prompt('New client — company name:');
   if(!name||!name.trim())return;
@@ -1893,27 +2071,55 @@ function renderClientDetail(groups){
   var totalPaid=hist.filter(function(e){return e.status==='paid';}).reduce(function(s,e){return s+(e.total||0);},0);
   var html='';
   html+='<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:18px">';
-  html+='<input class="editin" value="'+esc(g.company)+'" style="font-size:19px;font-weight:800;flex:1" onchange="renameClientCompany(\''+jsEsc(key)+'\',this.value)">';
-  html+='<button class="cvt o" onclick="deleteClientGroup(\''+jsEsc(key)+'\')" title="Delete this client" style="white-space:nowrap">🗑 Delete Client</button>';
+  if(ctEditMode){
+    html+='<input class="editin" value="'+esc(g.company)+'" style="font-size:19px;font-weight:800;flex:1" onchange="renameClientCompany(\''+jsEsc(key)+'\',this.value)">';
+  } else {
+    html+='<div style="font-size:19px;font-weight:800;flex:1">'+esc(g.company)+'</div>';
+  }
+  html+='<div style="display:flex;gap:8px;white-space:nowrap">';
+  if(ctEditMode){
+    html+='<button class="cvt" style="background:#e5f4ea;color:#1a8a4a;border-color:#c9e8d3" onclick="toggleContactEditMode(false)">✓ Done Editing</button>';
+  } else {
+    html+='<button class="cvt" onclick="toggleContactEditMode(true)">✏️ Edit</button>';
+  }
+  html+='<button class="cvt o" onclick="deleteClientGroup(\''+jsEsc(key)+'\')" title="Delete this client">🗑 Delete Client</button>';
+  html+='</div>';
   html+='</div>';
   html+='<div class="r2" style="margin-bottom:14px">';
-  html+='<div class="f"><label>Address</label><input class="editin" value="'+esc(primary.c.addr||'')+'" placeholder="Street address" onchange="updContactField('+primary.idx+',\'addr\',this.value)"></div>';
-  html+='<div class="f"><label>City</label><input class="editin" value="'+esc(primary.c.city||'')+'" placeholder="City, Province" onchange="updContactField('+primary.idx+',\'city\',this.value)"></div>';
+  if(ctEditMode){
+    html+='<div class="f"><label>Address</label><input class="editin" value="'+esc(primary.c.addr||'')+'" placeholder="Street address" onchange="updContactField('+primary.idx+',\'addr\',this.value)"></div>';
+    html+='<div class="f"><label>City</label><input class="editin" value="'+esc(primary.c.city||'')+'" placeholder="City, Province" onchange="updContactField('+primary.idx+',\'city\',this.value)"></div>';
+  } else {
+    html+='<div class="f"><label>Address</label><div class="ct-readonly">'+(esc(primary.c.addr||'')||'<span style="color:var(--mut)">—</span>')+'</div></div>';
+    html+='<div class="f"><label>City</label><div class="ct-readonly">'+(esc(primary.c.city||'')||'<span style="color:var(--mut)">—</span>')+'</div></div>';
+  }
   html+='</div>';
-  html+='<div class="f" style="margin-bottom:18px;max-width:280px"><label>Event Type</label><select class="editin" onchange="updContactField('+primary.idx+',\'eventType\',this.value)">'
-    +'<option value=""'+(!primary.c.eventType?' selected':'')+'>— Select —</option>'
-    +EVENT_TYPES.map(function(t){return '<option value="'+esc(t)+'"'+(primary.c.eventType===t?' selected':'')+'>'+t+'</option>';}).join('')
-    +'</select></div>';
+  if(ctEditMode){
+    html+='<div class="f" style="margin-bottom:18px;max-width:280px"><label>Event Type</label><select class="editin" onchange="updContactField('+primary.idx+',\'eventType\',this.value)">'
+      +'<option value=""'+(!primary.c.eventType?' selected':'')+'>— Select —</option>'
+      +EVENT_TYPES.map(function(t){return '<option value="'+esc(t)+'"'+(primary.c.eventType===t?' selected':'')+'>'+t+'</option>';}).join('')
+      +'</select></div>';
+  } else {
+    html+='<div class="f" style="margin-bottom:18px;max-width:280px"><label>Event Type</label><div class="ct-readonly">'+(primary.c.eventType?esc(primary.c.eventType):'<span style="color:var(--mut)">—</span>')+'</div></div>';
+  }
   html+='<h3 style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--bd)">Contacts &amp; Emails</h3>';
   html+='<div style="margin-bottom:10px">';
   g.records.forEach(function(r){
-    html+='<div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:7px;align-items:center">'
-      +'<input class="editin" placeholder="Contact name" value="'+esc(r.c.contact||'')+'" onchange="updContactField('+r.idx+',\'contact\',this.value)">'
-      +'<input class="editin" type="email" placeholder="Email" value="'+esc(r.c.email||'')+'" onchange="updContactField('+r.idx+',\'email\',this.value)">'
-      +'<button class="cvt o" onclick="delContact('+r.idx+')" title="Remove this contact">×</button></div>';
+    if(ctEditMode){
+      html+='<div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:7px;align-items:center">'
+        +'<input class="editin" placeholder="Contact name" value="'+esc(r.c.contact||'')+'" onchange="updContactField('+r.idx+',\'contact\',this.value)">'
+        +'<input class="editin" type="email" placeholder="Email" value="'+esc(r.c.email||'')+'" onchange="updContactField('+r.idx+',\'email\',this.value)">'
+        +'<button class="cvt o" onclick="delContact('+r.idx+')" title="Remove this contact">×</button></div>';
+    } else {
+      html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:7px;align-items:center">'
+        +'<div class="ct-readonly">'+(esc(r.c.contact||'')||'<span style="color:var(--mut)">—</span>')+'</div>'
+        +'<div class="ct-readonly">'+(esc(r.c.email||'')||'<span style="color:var(--mut)">—</span>')+'</div></div>';
+    }
   });
   html+='</div>';
-  html+='<button class="ab" onclick="addClientContact(\''+jsEsc(key)+'\')">+ Add another contact / email</button>';
+  if(ctEditMode){
+    html+='<button class="ab" onclick="addClientContact(\''+jsEsc(key)+'\')">+ Add another contact / email</button>';
+  }
   html+='<div style="margin-top:22px;padding-top:16px;border-top:1px solid var(--bd)">';
   html+='<h3 style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin-bottom:10px">Invoice History</h3>';
   if(hist.length){
@@ -1954,10 +2160,11 @@ function saveContact(d,src){
       contacts[ex].addr=d.client_addr||contacts[ex].addr;
       contacts[ex].city=d.client_city||contacts[ex].city;
       contacts[ex].contact=attName||contacts[ex].contact;
+      if(d.event_type)contacts[ex].eventType=d.event_type;
       fbSave('contacts',(em||d.client_name).replace(/[^a-zA-Z0-9]/g,'_')+(i>0?'_'+i:''),contacts[ex]);
       return;
     }
-    var e={company:d.client_name||'',contact:attName,email:em,addr:d.client_addr||'',city:d.client_city||'',source:src,date:new Date().toISOString().slice(0,10)};
+    var e={company:d.client_name||'',contact:attName,email:em,addr:d.client_addr||'',city:d.client_city||'',eventType:d.event_type||'',source:src,date:new Date().toISOString().slice(0,10)};
     contacts.unshift(e);
     fbSave('contacts',(em||d.client_name).replace(/[^a-zA-Z0-9]/g,'_')+(i>0?'_'+i:''),e);
   });
@@ -2157,6 +2364,14 @@ function populateDashClientSelect(nonRepl){
   sel.innerHTML='<option value="">All Clients</option>'+list.map(function(n){return '<option value="'+esc(n)+'">'+n+'</option>';}).join('');
   sel.value=cur;
 }
+function dismissDueSoon(invNum){
+  var i=iStatus.findIndex(function(x){return x.inv_num===invNum;});
+  if(i<0)return;
+  iStatus[i].dueSoonDismissed=true;
+  localStorage.setItem('cc_istatus',JSON.stringify(iStatus));
+  fbSave('istatus',invNum,iStatus[i]);
+  renderDash();
+}
 function renderDash(){
   var el=document.getElementById('dash-total');
   if(!el)return;
@@ -2245,7 +2460,9 @@ function renderDash(){
     box.classList.remove('ok');
     box.querySelector('h3').innerHTML='🔴 <span>'+overdue.length+' Overdue Invoice'+(overdue.length>1?'s':'')+'</span>';
     listEl.innerHTML=overdue.map(function(e){
-      return '<div class="dash-row"><span><b>'+(e.inv_num||'-')+'</b> — '+(e.client_name||'-')+'</span><span class="days">'+daysOver(e.due_date)+'d overdue · $ '+(e.total||0).toFixed(2)+'</span></div>';
+      return '<div class="dash-row"><span><b>'+(e.inv_num||'-')+'</b> — '+(e.client_name||'-')+'</span>'
+        +'<span class="dash-row-actions"><span class="days">'+daysOver(e.due_date)+'d overdue · $ '+(e.total||0).toFixed(2)+'</span>'
+        +'<button title="Generate a new invoice with 3% late fee added" onclick="genLate(\''+jsEsc(e.inv_num)+'\')" style="padding:4px 10px;background:#ef4444;color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap">+ Late Fee 3%</button></span></div>';
     }).join('');
   } else {
     box.classList.add('ok');
@@ -2253,7 +2470,7 @@ function renderDash(){
     listEl.innerHTML='<div class="dash-row" style="border:none;color:var(--mut)">No overdue invoices right now.</div>';
   }
   // Due Soon box — invoices unpaid and due within the next 10 days (not yet overdue)
-  var dueSoon=nonRepl.filter(function(e){var dv=daysOver(e.due_date);return e.status==='unpaid'&&dv<=0&&dv>=-10;});
+  var dueSoon=nonRepl.filter(function(e){var dv=daysOver(e.due_date);return e.status==='unpaid'&&dv<=0&&dv>=-10&&!e.dueSoonDismissed;});
   dueSoon.sort(function(a,b){return daysOver(b.due_date)-daysOver(a.due_date);});
   var dsBox=document.getElementById('dash-duesoon-box');
   var dsList=document.getElementById('dash-duesoon-list');
@@ -2266,7 +2483,8 @@ function renderDash(){
       return '<div class="dash-row">'
         +'<span class="info"><b>'+(e.inv_num||'-')+'</b> — '+(e.client_name||'-')+' · $ '+(e.total||0).toFixed(2)+'</span>'
         +'<span class="dash-row-actions"><span class="days soon">'+dueLabel+'</span>'
-        +'<button class="dash-mail-btn" onclick="emailDueSoonReminder(\''+jsEsc(e.inv_num)+'\')">✉ Remind</button></span></div>';
+        +'<button class="dash-mail-btn" onclick="emailDueSoonReminder(\''+jsEsc(e.inv_num)+'\')">✉ Remind</button>'
+        +'<button title="Remove from this list" onclick="dismissDueSoon(\''+jsEsc(e.inv_num)+'\')" style="padding:4px 8px;background:#eceef3;color:var(--mut);border:none;border-radius:7px;font-size:11px;cursor:pointer;font-weight:600">✕</button></span></div>';
     }).join('');
   } else {
     dsBox.style.display='none';
@@ -2604,18 +2822,18 @@ function loadFirebase(){
           appId:"1:445386914627:web:7800ce0e67bcac3b1a8df6"
         });
         _db=firebase.firestore();
-        // Load data
+        // Sincronização em tempo real — qualquer alteração feita em outro
+        // computador aparece aqui sozinha, sem precisar recarregar a página.
         var cols={ledger:'cc_ledger',quotes:'cc_quotes',istatus:'cc_istatus',contacts:'cc_contacts'};
         Object.keys(cols).forEach(function(col){
-          _db.collection(col).get().then(function(snap){
-            if(snap.empty)return;
+          _db.collection(col).onSnapshot(function(snap){
             var data=snap.docs.map(function(d){return d.data();});
             localStorage.setItem(cols[col],JSON.stringify(data));
             if(col==='ledger'){ledger=data;renderCB();updateStats();renderDash();}
             if(col==='quotes'){quotes=data;renderQH();autoNum('q');}
             if(col==='istatus'){iStatus=data;renderIS();renderDash();buildClientDB();checkInvoiceNumLive();}
-            if(col==='contacts'){contacts=data;renderCT();buildClientDB();}
-          }).catch(function(){});
+            if(col==='contacts'){contacts=data;buildClientDB();if(!editingContactIdLock)renderCT();}
+          },function(){});
         });
         // Vínculo com o Scheduler (ver /areas/crazy-cravings-integration):
         // se veio de um evento (botão "Generate Invoice"), pré-preenche o invoice
