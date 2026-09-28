@@ -8,8 +8,6 @@
 <meta name="apple-mobile-web-app-title" content="Crazy Cravings">
 <title>Crazy Cravings</title>
 <script src="data.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
 :root{--red:#C0153A;--red-dk:#9c0f2e;--red-lt:#fdeef1;--bd:#e6e5eb;--bg:#f4f5f9;--txt:#22232b;--mut:#83839a;--card:#fff;--rad:16px;--rad-sm:11px;--rad-xs:8px;--sh:0 1px 2px rgba(20,20,40,.04),0 6px 20px rgba(20,20,40,.06);--sh-lg:0 12px 40px rgba(20,20,40,.14);--ease:cubic-bezier(.4,0,.2,1)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -120,6 +118,11 @@ tbody td{padding:8px 11px;vertical-align:middle}
 .ss{border:1.5px solid var(--bd);border-radius:7px;font-size:11px;padding:3px 6px;cursor:pointer;outline:none}
 .cvt{padding:4px 10px;color:#fff;border:none;border-radius:7px;font-size:11px;cursor:pointer;white-space:nowrap;font-weight:600;transition:filter .15s var(--ease)}
 .cvt:disabled{opacity:.6;cursor:not-allowed}
+.lfChip{display:flex;justify-content:space-between;align-items:center;width:100%;padding:8px 11px;border-radius:8px;font-size:12px;margin-bottom:6px;border:1px solid var(--bd);font-family:inherit;text-align:left;box-sizing:border-box}
+.lfDone{background:#eef8f1;color:#1a8a4a;border-color:#c9e8d3}
+.lfLocked{background:#f4f4f7;color:var(--mut)}
+.lfActive{background:#fdeaea;color:#C0153A;font-weight:700;cursor:pointer;border-color:#f5c2c2;transition:filter .15s var(--ease)}
+.lfActive:hover{filter:brightness(0.96)}
 .cvt:hover{filter:brightness(1.08)}
 .cvt.r{background:var(--red)}.cvt.g{background:#1a8a4a}.cvt.o{background:#ef4444}.cvt.s{background:#555}
 .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px;vertical-align:middle}
@@ -1168,19 +1171,19 @@ function saveQEntry(d){
   var i=quotes.findIndex(function(x){return x.inv_num===d.inv_num;});
   if(i>=0)quotes[i]=e;else quotes.unshift(e);
   localStorage.setItem('cc_quotes',JSON.stringify(quotes));
-  fbSave('quotes',d.inv_num,e);
+  fbSave('cc_quotes',d.inv_num,e);
   toast('Quote saved!');
 }
 function delQuote(num){
   if(!confirm('Delete quote '+num+'?'))return;
   quotes=quotes.filter(function(e){return e.inv_num!==num;});
   localStorage.setItem('cc_quotes',JSON.stringify(quotes));
-  if(window._db)window._db.collection('quotes').doc(num.replace(/[^a-zA-Z0-9]/g,'_')).delete().catch(function(){});
+  if(window._db)window._db.collection('cc_quotes').doc(num.replace(/[^a-zA-Z0-9]/g,'_')).delete().catch(function(){});
   renderQH();toast('Quote deleted.');
 }
 function updQS(num,status){
   var e=quotes.find(function(x){return x.inv_num===num;});
-  if(e){e.status=status;localStorage.setItem('cc_quotes',JSON.stringify(quotes));fbSave('quotes',num,e);renderQH();}
+  if(e){e.status=status;localStorage.setItem('cc_quotes',JSON.stringify(quotes));fbSave('cc_quotes',num,e);renderQH();}
 }
 function q2iFromHist(num){
   var en=quotes.find(function(e){return e.inv_num===num;});
@@ -1270,7 +1273,7 @@ function saveISEntry(d){
     iStatus.unshift(e);
   }
   localStorage.setItem('cc_istatus',JSON.stringify(iStatus));
-  fbSave('istatus',d.inv_num,e);
+  fbSave('cc_istatus',d.inv_num,e);
   // Vínculo com o Scheduler: se este invoice veio de um evento, grava o invoiceId
   // de volta nele, junto com qualquer correção feita aqui (email, contato, endereço)
   if(window._linkedEventId&&_db){
@@ -1304,7 +1307,7 @@ function recalcDueDates(){
     var newDue=due.toISOString().slice(0,10);
     if(newDue!==e.due_date){
       e.due_date=newDue;e.ev_net=net;
-      fbSave('istatus',e.inv_num,e);
+      fbSave('cc_istatus',e.inv_num,e);
       count++;
     }
   });
@@ -1399,7 +1402,7 @@ function renderIS(){
     var stSel=document.createElement('select');stSel.className='ss';stSel.style.cssText='font-size:11px;padding:2px 4px';
     stSel.innerHTML='<option value="unpaid"'+(e.status==='unpaid'?' selected':'')+'>Unpaid</option><option value="paid"'+(e.status==='paid'?' selected':'')+'>Paid</option><option value="replaced"'+(e.status==='replaced'?' selected':'')+'>Replaced</option>';
     stSel.addEventListener('change',function(){
-      e.status=this.value;localStorage.setItem('cc_istatus',JSON.stringify(iStatus));fbSave('istatus',e.inv_num,e);renderIS();
+      e.status=this.value;localStorage.setItem('cc_istatus',JSON.stringify(iStatus));fbSave('cc_istatus',e.inv_num,e);renderIS();
     });
     t0.appendChild(dotSpan);t0.appendChild(stSel);
     var t1=document.createElement('td');t1.innerHTML='<strong>'+(e.inv_num||'-')+'</strong>';t1.style.cursor='pointer';
@@ -1413,7 +1416,7 @@ function renderIS(){
     sentChk.addEventListener('change',function(){
       e.sent_status=this.checked?'yes':'no';
       localStorage.setItem('cc_istatus',JSON.stringify(iStatus));
-      fbSave('istatus',e.inv_num,e);
+      fbSave('cc_istatus',e.inv_num,e);
     });
     tSent.appendChild(sentChk);
     var t2=document.createElement('td');t2.textContent=e.client_name||'-';t2.title='Click to view details';t2.style.cursor='pointer';
@@ -1428,7 +1431,7 @@ function renderIS(){
     var rdIn=document.createElement('input');rdIn.type='date';rdIn.value=e.received_date||'';
     rdIn.style.cssText='border:1px solid var(--bd);border-radius:4px;font-size:10.5px;padding:2px 3px;width:98px';
     rdIn.addEventListener('change',function(){
-      e.received_date=this.value;localStorage.setItem('cc_istatus',JSON.stringify(iStatus));fbSave('istatus',e.inv_num,e);
+      e.received_date=this.value;localStorage.setItem('cc_istatus',JSON.stringify(iStatus));fbSave('cc_istatus',e.inv_num,e);
     });
     t6.appendChild(rdIn);
     var t7=document.createElement('td');
@@ -1443,7 +1446,7 @@ function renderIS(){
       ps.innerHTML='<option value="">-- Select --</option>'+['card','cash','cheque','etransfer','eft'].map(function(v){return '<option value="'+v+'"'+(e.pay_method===v?' selected':'')+'>'+pms[v]+'</option>';}).join('');
       ps.addEventListener('change',function(){
         e.pay_method=this.value;e.data.pay_method=this.value;
-        localStorage.setItem('cc_istatus',JSON.stringify(iStatus));fbSave('istatus',e.inv_num,e);renderIS();
+        localStorage.setItem('cc_istatus',JSON.stringify(iStatus));fbSave('cc_istatus',e.inv_num,e);renderIS();
       });
       t8.appendChild(ps);
     } else {t8.innerHTML='<span style="color:#ccc">--</span>';}
@@ -1456,7 +1459,7 @@ function renderIS(){
       bankSel.addEventListener('change',function(){
         e.bank=this.value;
         localStorage.setItem('cc_istatus',JSON.stringify(iStatus));
-        fbSave('istatus',e.inv_num,e);
+        fbSave('cc_istatus',e.inv_num,e);
       });
       t8b.appendChild(bankSel);
     } else {t8b.innerHTML='<span style="color:#ccc">--</span>';}
@@ -1745,6 +1748,46 @@ function isLateFeeEligible(en){
   var today=new Date();today.setHours(12,0,0,0);
   return today>=next;
 }
+// Monta os chips Late-1/Late-2/Late-3... — cada um só é clicável quando for
+// exatamente o próximo da fila E a data dele já tiver chegado. Os demais ficam
+// travados (🔒) mostrando quando desbloqueiam, sem depender de nenhum clique anterior.
+function lateFeeChipsHtml(en,term,showCount){
+  if(!en.due_date)return '';
+  var charges=en.late_fee_charges||[];
+  var n=Math.max(showCount||3,charges.length+1);
+  var html='';
+  for(var i=0;i<n;i++){
+    var scheduledDate=new Date(en.due_date+'T12:00:00');
+    scheduledDate.setDate(scheduledDate.getDate()+i*term);
+    var charge=charges[i];
+    if(charge){
+      html+='<div class="lfChip lfDone">✓ Late-'+(i+1)+' — '+fmtDateLong(new Date(charge.date+'T12:00:00'))+'<span>$ '+charge.amount.toFixed(2)+'</span></div>';
+    } else {
+      var isNext=(i===charges.length);
+      var today=new Date();today.setHours(12,0,0,0);
+      var eligible=isNext&&today>=scheduledDate;
+      if(eligible){
+        html+='<button type="button" class="lfChip lfActive" data-slot="'+i+'">⚠ Charge Late-'+(i+1)+'<span>~$ '+estimateLateFeeAmount(en,i).toFixed(2)+'</span></button>';
+      } else {
+        html+='<div class="lfChip lfLocked">🔒 Late-'+(i+1)+' — unlocks '+fmtDateLong(scheduledDate)+'</div>';
+      }
+    }
+  }
+  return html;
+}
+// Estimativa do valor de um juro futuro ainda não cobrado (assumindo que os
+// anteriores sejam cobrados em dia) — só pra dar uma ideia na tela; o valor
+// real é sempre recalculado no momento exato da cobrança.
+function estimateLateFeeAmount(en,slotIndex){
+  var charges=en.late_fee_charges||[];
+  var running=(en.total||0)+charges.reduce(function(s,c){return s+c.amount;},0);
+  var fee=0;
+  for(var i=charges.length;i<=slotIndex;i++){
+    fee=parseFloat((running*0.03).toFixed(2));
+    running+=fee;
+  }
+  return fee;
+}
 function fmtDateLong(d){
   return d?d.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}):'';
 }
@@ -1759,33 +1802,69 @@ function genStatement(num){
   if(isNaN(received)||received<0){toast('Enter a valid amount.');return;}
   en.amount_received=received;
   localStorage.setItem('cc_istatus',JSON.stringify(iStatus));
-  fbSave('istatus',num,en);
+  // update() em vez de set() — só grava o campo amount_received, sem sobrescrever
+  // nada mais que outro aparelho possa ter alterado nesse meio-tempo (ex: um juro
+  // cobrado quase ao mesmo tempo por outra pessoa).
+  if(_db){
+    _db.collection('cc_istatus').doc(num.replace(/[^a-zA-Z0-9]/g,'_')).update({amount_received:received})
+      .catch(function(err){ toast('⚠ Falha ao salvar no servidor: '+(err&&err.message?err.message:'erro desconhecido')); });
+  }
   renderIS();renderDash();
   buildStatementPDF(en);
 }
+// Cobra o PRÓXIMO juro elegível usando uma transação do Firestore — isso garante
+// que, mesmo se dois aparelhos clicarem quase ao mesmo tempo, nunca dá pra cobrar
+// duas vezes o mesmo período nem perder a cobrança de um dos dois. slotIndex é
+// opcional: se passado, só cobra se for exatamente o próximo da fila (Late-N).
+function chargeLateFeeAtomic(num,slotIndex){
+  if(!_db){toast('⚠ Sem conexão com o servidor no momento — tente de novo em alguns segundos.');return;}
+  var docId=num.replace(/[^a-zA-Z0-9]/g,'_');
+  var ref=_db.collection('cc_istatus').doc(docId);
+  _db.runTransaction(function(tx){
+    return tx.get(ref).then(function(doc){
+      if(!doc.exists)throw new Error('Invoice not found on the server.');
+      var en=doc.data();
+      if(!isLateFeeEligible(en)){
+        var next=nextLateFeeEligibleDate(en);
+        var e=new Error('NOT_ELIGIBLE');
+        e.nextDate=next;
+        throw e;
+      }
+      var charges=en.late_fee_charges||[];
+      if(slotIndex!=null&&slotIndex!==charges.length){
+        var e2=new Error('WRONG_SLOT'); // outro aparelho já cobrou nesse meio-tempo
+        throw e2;
+      }
+      var priorLateFees=charges.reduce(function(s,c){return s+c.amount;},0);
+      var runningTotal=(en.total||0)+priorLateFees;
+      var newFee=parseFloat((runningTotal*0.03).toFixed(2));
+      var scheduledDate=nextLateFeeEligibleDate(en);
+      var scheduledDateStr=scheduledDate?scheduledDate.toISOString().slice(0,10):new Date().toISOString().slice(0,10);
+      var newCharges=charges.concat([{date:scheduledDateStr,amount:newFee}]);
+      tx.update(ref,{late_fee_charges:newCharges});
+      return {en:en,newFee:newFee,newCharges:newCharges};
+    });
+  }).then(function(result){
+    var idx=iStatus.findIndex(function(x){return x.inv_num===num;});
+    var enLocal=idx>=0?iStatus[idx]:result.en;
+    enLocal.late_fee_charges=result.newCharges;
+    localStorage.setItem('cc_istatus',JSON.stringify(iStatus));
+    renderIS();renderDash();
+    buildStatementPDF(enLocal);
+    toast('Late fee of $ '+result.newFee.toFixed(2)+' charged! Balance owed: $ '+currentBalanceOwed(enLocal).toFixed(2));
+  }).catch(function(err){
+    if(err&&err.message==='NOT_ELIGIBLE'){
+      alert('This late fee isn\'t available yet — it unlocks on '+fmtDateLong(err.nextDate)+'.');
+    } else if(err&&err.message==='WRONG_SLOT'){
+      alert('This charge was already applied — probably from another device just now. Refreshing the schedule.');
+      renderIS();
+    } else {
+      alert('Could not charge the late fee: '+(err&&err.message?err.message:'unknown error')+'. Please try again.');
+    }
+  });
+}
 function genLateFeeStatement(num){
-  var en=iStatus.find(function(e){return e.inv_num===num;});
-  if(!en){toast('Invoice not found.');return;}
-  if(!isLateFeeEligible(en)){
-    var next=nextLateFeeEligibleDate(en);
-    alert('This invoice already has a late fee charged for the current period. The next one only becomes available on '+fmtDateLong(next)+'.');
-    return;
-  }
-  // Juro composto de 3%: incide sobre o total original + juros já cobrados antes
-  var priorLateFees=(en.late_fee_charges||[]).reduce(function(s,c){return s+c.amount;},0);
-  var runningTotal=(en.total||0)+priorLateFees;
-  var newFee=parseFloat((runningTotal*0.03).toFixed(2));
-  // A data da cobrança segue o calendário do prazo (vencimento + 1 período, +1 período...),
-  // não a data em que alguém clicou no botão — assim o Statement fica correto mesmo
-  // se a cobrança for feita com atraso.
-  var scheduledDate=nextLateFeeEligibleDate(en);
-  var scheduledDateStr=scheduledDate?scheduledDate.toISOString().slice(0,10):new Date().toISOString().slice(0,10);
-  en.late_fee_charges=(en.late_fee_charges||[]).concat([{date:scheduledDateStr,amount:newFee}]);
-  localStorage.setItem('cc_istatus',JSON.stringify(iStatus));
-  fbSave('istatus',num,en);
-  renderIS();renderDash();
-  buildStatementPDF(en);
-  toast('Late fee of $ '+newFee.toFixed(2)+' charged! Balance owed: $ '+currentBalanceOwed(en).toFixed(2));
+  chargeLateFeeAtomic(num,null);
 }
 function buildStatementPDF(en){
   var d=en.data||{};
@@ -1871,11 +1950,11 @@ function sendToCB(num){
   var i=ledger.findIndex(function(x){return x.inv_num===d.inv_num;});
   if(i>=0)ledger[i]=d;else ledger.unshift(d);
   localStorage.setItem('cc_ledger',JSON.stringify(ledger));
-  fbSave('ledger',d.inv_num,d);
+  fbSave('cc_ledger',d.inv_num,d);
   // Mark as sent to cashbook
   en.in_cashbook=true;
   localStorage.setItem('cc_istatus',JSON.stringify(iStatus));
-  fbSave('istatus',num,en);
+  fbSave('cc_istatus',num,en);
   updateStats();renderIS();toast('✓ Sent to Cash Book!');
 }
 function genLate(num){
@@ -1936,7 +2015,7 @@ function genLate(num){
   en.status='replaced';
   en.replaced_by=d.inv_num;
   localStorage.setItem('cc_istatus',JSON.stringify(iStatus));
-  fbSave('istatus',en.inv_num,en);
+  fbSave('cc_istatus',en.inv_num,en);
 
   fillInvoice(d);
 
@@ -1981,19 +2060,8 @@ function openInvoiceDetailModal(invNum){
     +(en.amount_received!=null?row('Received','$ '+en.amount_received.toFixed(2)):'')
     +(hasOwed?'<div style="display:flex;justify-content:space-between;font-weight:800;font-size:15px;color:#C0153A;padding-top:4px;border-top:1px solid var(--bd);margin-top:2px"><span>Balance Owed</span><span>$ '+owed.toFixed(2)+'</span></div>':'');
   var isOv=en.status==='unpaid'&&daysOver(en.due_date)>0;
-  var lateFeeSchedule='';
-  if(isOv||(en.late_fee_charges&&en.late_fee_charges.length)){
-    var lfInner='';
-    (en.late_fee_charges||[]).forEach(function(c,i){
-      lfInner+='<div style="display:flex;justify-content:space-between;font-size:12px"><span>Charge '+(i+1)+' — '+fmtDateLong(new Date(c.date+'T12:00:00'))+'</span><span>$ '+c.amount.toFixed(2)+'</span></div>';
-    });
-    if(isOv){
-      var elig=isLateFeeEligible(en);
-      lfInner+='<div style="font-size:12px;font-weight:700;margin-top:2px;color:'+(elig?'#C0153A':'var(--mut)')+'">'
-        +(elig?'✓ Eligible for next late fee now':'⏳ Next eligible: '+fmtDateLong(nextLateFeeEligibleDate(en)))+'</div>';
-    }
-    lateFeeSchedule=section('Late Fee Schedule — term '+esc((d.ev_net||en.ev_net||'NET 30')),lfInner);
-  }
+  var term=netDays((d.ev_net||en.ev_net||'NET 30'));
+  var showLateFeeSection=isOv||(en.late_fee_charges&&en.late_fee_charges.length);
   ov.innerHTML='<div style="background:#fff;border-radius:16px;padding:24px 26px;max-width:480px;width:100%;max-height:90vh;overflow-y:auto">'
     +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:2px"><h2 style="font-size:20px;margin:0">'+esc(en.inv_num||'-')+(isLateFee?' <span style="font-size:11px;font-weight:700;color:#ef4444;background:#fdeaea;padding:2px 8px;border-radius:6px;vertical-align:middle">LATE FEE</span>':'')+'</h2>'
     +'<button id="ivm-close" style="border:none;background:transparent;font-size:22px;cursor:pointer;color:#999;line-height:1;padding:0 2px">×</button></div>'
@@ -2003,19 +2071,17 @@ function openInvoiceDetailModal(invNum){
     +section('Event',eventInfo)
     +(itemsHtml?'<div style="margin-bottom:14px"><h3 style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);margin:0 0 8px;font-weight:700">Line Items</h3><div style="border:1px solid var(--bd);border-radius:10px;padding:2px 12px">'+itemsHtml+'</div></div>':'')
     +section('Totals',totalsInner)
-    +lateFeeSchedule
+    +(showLateFeeSection?'<div style="margin-bottom:14px;background:#faf7f9;border-radius:10px;padding:12px 14px">'
+      +'<h3 style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);margin:0 0 8px;font-weight:700">Late Fee Schedule — term '+esc((d.ev_net||en.ev_net||'NET 30'))+'</h3>'
+      +'<div id="ivm-latefee-chips"></div>'
+      +'<button type="button" id="ivm-latefee-more" class="cvt s" style="margin-top:4px;padding:5px 10px;font-size:11px">+ Show more</button>'
+      +'</div>':'')
     +'<div class="f" style="margin-bottom:16px"><label>Status</label><select id="ivm-status" class="editin" style="border:1.5px solid var(--bd)">'
     +'<option value="unpaid"'+(en.status==='unpaid'?' selected':'')+'>Unpaid</option>'
     +'<option value="paid"'+(en.status==='paid'?' selected':'')+'>Paid</option>'
     +'<option value="replaced"'+(en.status==='replaced'?' selected':'')+'>Replaced</option>'
     +'</select></div>'
     +'<div style="display:flex;flex-direction:column;gap:8px">'
-    +(en.status==='unpaid'&&daysOver(en.due_date)>0?(function(){
-      var elig=isLateFeeEligible(en);
-      return elig
-        ?'<button id="ivm-latefee" class="cvt o" style="padding:10px">⚠ Charge Late Fee &amp; Generate Statement</button>'
-        :'<button id="ivm-latefee" class="cvt s" style="padding:10px" disabled title="Next late fee eligible on '+fmtDateLong(nextLateFeeEligibleDate(en))+'">⏳ Next Late Fee: '+fmtDateLong(nextLateFeeEligibleDate(en))+'</button>';
-    })():'')
     +(en.late_fee_charges&&en.late_fee_charges.length?'<button id="ivm-reprint" class="cvt" style="padding:10px;background:#7c3aed">📄 Reprint Current Statement</button>':'')
     +'<button id="ivm-pdf" class="cvt" style="padding:10px;background:#1a8a4a">📄 Generate Invoice PDF</button>'
     +'<button id="ivm-statement" class="cvt" style="padding:10px;background:#7c3aed">📄 Generate Statement (record payment received)</button>'
@@ -2028,15 +2094,35 @@ function openInvoiceDetailModal(invNum){
   ov.addEventListener('click',function(e){if(e.target===ov)ov.remove();});
   ov.querySelector('#ivm-close').addEventListener('click',function(){ov.remove();});
   ov.querySelector('#ivm-pdf').addEventListener('click',function(){makePDF(d,false);});
-  var lateFeeBtn=ov.querySelector('#ivm-latefee');
-  if(lateFeeBtn)lateFeeBtn.addEventListener('click',function(){ov.remove();genLateFeeStatement(en.inv_num);});
+  if(showLateFeeSection){
+    var lfShowCount=Math.max(3,(en.late_fee_charges||[]).length+1);
+    function paintLateFeeChips(){
+      var enNow=iStatus.find(function(x){return x.inv_num===en.inv_num;})||en;
+      var box=ov.querySelector('#ivm-latefee-chips');
+      if(!box)return;
+      box.innerHTML=lateFeeChipsHtml(enNow,term,lfShowCount);
+      box.querySelectorAll('.lfActive').forEach(function(btn){
+        btn.addEventListener('click',function(){
+          var slot=parseInt(btn.getAttribute('data-slot'),10);
+          chargeLateFeeAtomic(en.inv_num,slot);
+          setTimeout(paintLateFeeChips,600); // dá tempo da transação confirmar e repinta
+        });
+      });
+    }
+    paintLateFeeChips();
+    var moreBtn=ov.querySelector('#ivm-latefee-more');
+    if(moreBtn)moreBtn.addEventListener('click',function(){lfShowCount+=3;paintLateFeeChips();});
+  }
   var reprintBtn=ov.querySelector('#ivm-reprint');
   if(reprintBtn)reprintBtn.addEventListener('click',function(){buildStatementPDF(en);});
   ov.querySelector('#ivm-statement').addEventListener('click',function(){ov.remove();genStatement(en.inv_num);});
   ov.querySelector('#ivm-status').addEventListener('change',function(){
     en.status=this.value;
     localStorage.setItem('cc_istatus',JSON.stringify(iStatus));
-    fbSave('istatus',en.inv_num,en);
+    if(_db){
+      _db.collection('cc_istatus').doc(en.inv_num.replace(/[^a-zA-Z0-9]/g,'_')).update({status:en.status})
+        .catch(function(err){ toast('⚠ Falha ao salvar no servidor: '+(err&&err.message?err.message:'erro desconhecido')); });
+    }
     renderIS();
     toast('Status updated!');
   });
@@ -2059,7 +2145,7 @@ function confirmDel(num){
   ov.querySelector('#cd-btn').addEventListener('click',function(){
     iStatus=iStatus.filter(function(e){return e.inv_num!==num;});
     localStorage.setItem('cc_istatus',JSON.stringify(iStatus));
-    fbDel('istatus',num);ov.remove();renderIS();toast('Deleted.');
+    fbDel('cc_istatus',num);ov.remove();renderIS();toast('Deleted.');
   });
 }
 
@@ -2178,7 +2264,7 @@ function saveContactDraft(){
     obj.contact=(rec.contact||'').trim();
     obj.email=(rec.email||'').trim();
     if(pos===0){obj.addr=(rec.addr||'').trim();obj.city=(rec.city||'').trim();obj.eventType=rec.eventType||'';}
-    fbSave('contacts',contactDocId(obj),obj);
+    fbSave('cc_contacts',contactDocId(obj),obj);
     keptIdxs[rec.idx]=true;
   });
   // Remove no Firestore os contatos que estavam no grupo original e foram tirados no rascunho
@@ -2187,7 +2273,7 @@ function saveContactDraft(){
     origGroup.records.forEach(function(r){
       if(!keptIdxs[r.idx]){
         var key=contactDocId(contacts[r.idx]);
-        if(key)fbDel('contacts',key);
+        if(key)fbDel('cc_contacts',key);
       }
     });
   }
@@ -2212,7 +2298,7 @@ function addNewClient(){
   var e={company:name.trim(),contact:'',email:'',addr:'',city:'',source:'Manual',date:new Date().toISOString().slice(0,10)};
   contacts.unshift(e);
   localStorage.setItem('cc_contacts',JSON.stringify(contacts));
-  fbSave('contacts',contactDocId(e),e);
+  fbSave('cc_contacts',contactDocId(e),e);
   buildClientDB();
   ctSelectedCompany=name.trim().toLowerCase();
   renderCT();
@@ -2222,7 +2308,7 @@ function deleteClientGroup(key){
   if(!g)return;
   if(!confirm('Delete client "'+g.company+'" and all '+g.records.length+' associated contact(s)? This cannot be undone.'))return;
   var idxs=g.records.map(function(r){return r.idx;}).sort(function(a,b){return b-a;});
-  idxs.forEach(function(i){var k=contactDocId(contacts[i]);contacts.splice(i,1);if(k)fbDel('contacts',k);});
+  idxs.forEach(function(i){var k=contactDocId(contacts[i]);contacts.splice(i,1);if(k)fbDel('cc_contacts',k);});
   localStorage.setItem('cc_contacts',JSON.stringify(contacts));
   ctSelectedCompany=null;
   buildClientDB();
@@ -2372,12 +2458,12 @@ function saveContact(d,src){
       contacts[ex].city=d.client_city||contacts[ex].city;
       contacts[ex].contact=attName||contacts[ex].contact;
       if(d.event_type)contacts[ex].eventType=d.event_type;
-      fbSave('contacts',contactDocId(contacts[ex]),contacts[ex]);
+      fbSave('cc_contacts',contactDocId(contacts[ex]),contacts[ex]);
       return;
     }
     var e={company:d.client_name||'',contact:attName,email:em,addr:d.client_addr||'',city:d.client_city||'',eventType:d.event_type||'',source:src,date:new Date().toISOString().slice(0,10)};
     contacts.unshift(e);
-    fbSave('contacts',contactDocId(e),e);
+    fbSave('cc_contacts',contactDocId(e),e);
   });
   localStorage.setItem('cc_contacts',JSON.stringify(contacts));
   buildClientDB();
@@ -2436,18 +2522,18 @@ function saveBook(){
   var i=ledger.findIndex(function(e){return e.inv_num===d.inv_num;});
   if(i>=0)ledger[i]=d;else ledger.unshift(d);
   localStorage.setItem('cc_ledger',JSON.stringify(ledger));
-  fbSave('ledger',d.inv_num,d);
+  fbSave('cc_ledger',d.inv_num,d);
   renderCB();updateStats();toast('Saved to Cash Book!');goTab('cash');
 }
 function updCBStatus(num,status){
   var e=ledger.find(function(x){return x.inv_num===num;});
-  if(e){e.status=status;localStorage.setItem('cc_ledger',JSON.stringify(ledger));updateStats();fbSave('ledger',num,e);}
+  if(e){e.status=status;localStorage.setItem('cc_ledger',JSON.stringify(ledger));updateStats();fbSave('cc_ledger',num,e);}
 }
 function delCB(num){
   if(!confirm('Remove '+num+'?'))return;
   ledger=ledger.filter(function(e){return e.inv_num!==num;});
   localStorage.setItem('cc_ledger',JSON.stringify(ledger));
-  fbDel('ledger',num);renderCB();updateStats();
+  fbDel('cc_ledger',num);renderCB();updateStats();
 }
 function renderCB(){
   var s=document.getElementById('cbs').value.toLowerCase();
@@ -2580,15 +2666,30 @@ function dismissDueSoon(invNum){
   if(i<0)return;
   iStatus[i].dueSoonDismissed=true;
   localStorage.setItem('cc_istatus',JSON.stringify(iStatus));
-  fbSave('istatus',invNum,iStatus[i]);
+  fbSave('cc_istatus',invNum,iStatus[i]);
   renderDash();
 }
 var _cityLeafletMap=null;
 var _cityMapMarkers=[];
+var _leafletLoading=false;
+function loadLeafletThen(cb){
+  if(typeof L!=='undefined'){cb();return;}
+  if(_leafletLoading){setTimeout(function(){loadLeafletThen(cb);},300);return;}
+  _leafletLoading=true;
+  var link=document.createElement('link');
+  link.rel='stylesheet';link.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';
+  document.head.appendChild(link);
+  var s=document.createElement('script');
+  s.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';
+  s.onload=function(){_leafletLoading=false;cb();};
+  s.onerror=function(){_leafletLoading=false;};
+  document.head.appendChild(s);
+}
 function renderCityMap(){
   var host=document.getElementById('dash-city-map');
   var emptyEl=document.getElementById('dash-city-map-empty');
-  if(!host||typeof L==='undefined')return;
+  if(!host)return;
+  if(typeof L==='undefined'){loadLeafletThen(renderCityMap);return;}
   var counts={}; // nome da cidade -> quantidade de invoices
   iStatus.filter(function(e){return e.status!=='replaced';}).forEach(function(e){
     var raw=(e.data&&e.data.client_city)||e.client_city||'';
@@ -2638,7 +2739,7 @@ function renderCityMap(){
   setTimeout(function(){if(_cityLeafletMap)_cityLeafletMap.invalidateSize();},150);
 }
 function renderDash(){
-  renderCityMap();
+  try{renderCityMap();}catch(e){}
   var el=document.getElementById('dash-total');
   if(!el)return;
   var nonRepl=iStatus.filter(function(e){return e.status!=='replaced';});
@@ -3107,18 +3208,22 @@ function loadFirebase(){
             if(col==='quotes'){quotes=data;renderQH();autoNum('q');}
             if(col==='istatus'){iStatus=data;renderIS();renderDash();buildClientDB();checkInvoiceNumLive();}
             if(col==='contacts'){contacts=data;buildClientDB();if(!editingContactIdLock)renderCT();}
-          },function(){});
+          },function(err){
+            toast('⚠ Lost connection to the server — showing last saved data. '+(err&&err.message?err.message:''));
+          });
         });
         // Vínculo com o Scheduler (ver /areas/crazy-cravings-integration):
         // se veio de um evento (botão "Generate Invoice"), pré-preenche o invoice
         loadInvoiceFromEvent();
         initAgendaEventsListener();
-      }catch(e){}
+      }catch(e){
+        toast('⚠ Could not connect to the server. Data shown may be out of date — check your internet and refresh.');
+      }
     };
-    s2.onerror=function(){};
+    s2.onerror=function(){toast('⚠ Could not load the server connection (Firestore). Check your internet and refresh.');};
     document.head.appendChild(s2);
   };
-  s1.onerror=function(){};
+  s1.onerror=function(){toast('⚠ Could not load the server connection (Firebase). Check your internet and refresh.');};
   document.head.appendChild(s1);
 }
 
