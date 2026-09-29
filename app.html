@@ -953,7 +953,17 @@ function guardInvoiceNum(d){
     var el=document.getElementById('i-num'),warn=document.getElementById('i-num-warn');
     if(warn)warn.style.display='block';
     if(el){el.focus();el.style.borderColor='#ef4444';el.scrollIntoView({behavior:'smooth',block:'center'});}
-    toast('⚠ Invoice #'+d.inv_num.replace(/^#+/,'')+' already exists ('+(clash.client_name||'-')+', $'+(clash.total||0).toFixed(2)+'). Change the number to continue.');
+    // Antes isso bloqueava em silêncio (só um toast fácil de não ver) e o que a
+    // pessoa acabou de preencher nunca era salvo. Agora pergunta claramente:
+    // atualizar o invoice existente com os dados de agora, ou trocar o número?
+    var ok=confirm('Invoice #'+d.inv_num.replace(/^#+/,'')+' already exists — '+(clash.client_name||'-')+', $'+(clash.total||0).toFixed(2)+'.\n\nUpdate it with what you just entered? Click Cancel to change the number instead.');
+    if(ok){
+      editingInvoiceNum=d.inv_num;
+      if(el)el.style.borderColor='';
+      if(warn)warn.style.display='none';
+      return true;
+    }
+    toast('⚠ Not saved — change the invoice number to continue, or confirm the update next time.');
     return false;
   }
   return true;
@@ -1262,12 +1272,14 @@ function saveISEntry(d){
     total:d.total,cc_total:d.cc_total,ev_net:d.ev_net||'NET 30',pay_method:'',received_date:'',data:d};
   var i=iStatus.findIndex(function(x){return x.inv_num===d.inv_num;});
   if(i>=0){
-    // Preserve status/payment info already tracked for this invoice — only refresh due date and underlying data
+    // Preserve status/payment/late-fee info already tracked for this invoice — only refresh due date and underlying data
     e.status=iStatus[i].status||'unpaid';
     e.pay_method=iStatus[i].pay_method||'';
     e.received_date=iStatus[i].received_date||'';
     e.sent_status=iStatus[i].sent_status||null;
     e.in_cashbook=iStatus[i].in_cashbook||null;
+    if(iStatus[i].late_fee_charges)e.late_fee_charges=iStatus[i].late_fee_charges;
+    if(iStatus[i].amount_received!=null)e.amount_received=iStatus[i].amount_received;
     iStatus[i]=e;
   } else {
     iStatus.unshift(e);
