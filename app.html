@@ -1185,19 +1185,19 @@ function saveQEntry(d){
   var i=quotes.findIndex(function(x){return x.inv_num===d.inv_num;});
   if(i>=0)quotes[i]=e;else quotes.unshift(e);
   localStorage.setItem('cc_quotes',JSON.stringify(quotes));
-  fbSave('cc_quotes',d.inv_num,e);
+  fbSave('quotes',d.inv_num,e);
   toast('Quote saved!');
 }
 function delQuote(num){
   if(!confirm('Delete quote '+num+'?'))return;
   quotes=quotes.filter(function(e){return e.inv_num!==num;});
   localStorage.setItem('cc_quotes',JSON.stringify(quotes));
-  if(window._db)window._db.collection('cc_quotes').doc(num.replace(/[^a-zA-Z0-9]/g,'_')).delete().catch(function(){});
+  if(window._db)window._db.collection('quotes').doc(num.replace(/[^a-zA-Z0-9]/g,'_')).delete().catch(function(){});
   renderQH();toast('Quote deleted.');
 }
 function updQS(num,status){
   var e=quotes.find(function(x){return x.inv_num===num;});
-  if(e){e.status=status;localStorage.setItem('cc_quotes',JSON.stringify(quotes));fbSave('cc_quotes',num,e);renderQH();}
+  if(e){e.status=status;localStorage.setItem('cc_quotes',JSON.stringify(quotes));fbSave('quotes',num,e);renderQH();}
 }
 function q2iFromHist(num){
   var en=quotes.find(function(e){return e.inv_num===num;});
@@ -1289,7 +1289,7 @@ function saveISEntry(d){
     iStatus.unshift(e);
   }
   localStorage.setItem('cc_istatus',JSON.stringify(iStatus));
-  fbSave('cc_istatus',d.inv_num,e);
+  fbSave('istatus',d.inv_num,e);
   // Vínculo com o Scheduler: se este invoice veio de um evento, grava o invoiceId
   // de volta nele, junto com qualquer correção feita aqui (email, contato, endereço)
   if(window._linkedEventId&&_db){
@@ -1323,7 +1323,7 @@ function recalcDueDates(){
     var newDue=due.toISOString().slice(0,10);
     if(newDue!==e.due_date){
       e.due_date=newDue;e.ev_net=net;
-      fbSave('cc_istatus',e.inv_num,e);
+      fbSave('istatus',e.inv_num,e);
       count++;
     }
   });
@@ -1418,7 +1418,7 @@ function renderIS(){
     var stSel=document.createElement('select');stSel.className='ss';stSel.style.cssText='font-size:11px;padding:2px 4px';
     stSel.innerHTML='<option value="unpaid"'+(e.status==='unpaid'?' selected':'')+'>Unpaid</option><option value="paid"'+(e.status==='paid'?' selected':'')+'>Paid</option><option value="replaced"'+(e.status==='replaced'?' selected':'')+'>Replaced</option>';
     stSel.addEventListener('change',function(){
-      e.status=this.value;localStorage.setItem('cc_istatus',JSON.stringify(iStatus));fbSave('cc_istatus',e.inv_num,e);renderIS();
+      e.status=this.value;localStorage.setItem('cc_istatus',JSON.stringify(iStatus));fbSave('istatus',e.inv_num,e);renderIS();
     });
     t0.appendChild(dotSpan);t0.appendChild(stSel);
     var t1=document.createElement('td');t1.innerHTML='<strong>'+(e.inv_num||'-')+'</strong>';t1.style.cursor='pointer';
@@ -1432,7 +1432,7 @@ function renderIS(){
     sentChk.addEventListener('change',function(){
       e.sent_status=this.checked?'yes':'no';
       localStorage.setItem('cc_istatus',JSON.stringify(iStatus));
-      fbSave('cc_istatus',e.inv_num,e);
+      fbSave('istatus',e.inv_num,e);
     });
     tSent.appendChild(sentChk);
     var t2=document.createElement('td');t2.textContent=e.client_name||'-';t2.title='Click to view details';t2.style.cursor='pointer';
@@ -1447,7 +1447,7 @@ function renderIS(){
     var rdIn=document.createElement('input');rdIn.type='date';rdIn.value=e.received_date||'';
     rdIn.style.cssText='border:1px solid var(--bd);border-radius:4px;font-size:10.5px;padding:2px 3px;width:98px';
     rdIn.addEventListener('change',function(){
-      e.received_date=this.value;localStorage.setItem('cc_istatus',JSON.stringify(iStatus));fbSave('cc_istatus',e.inv_num,e);
+      e.received_date=this.value;localStorage.setItem('cc_istatus',JSON.stringify(iStatus));fbSave('istatus',e.inv_num,e);
     });
     t6.appendChild(rdIn);
     var t7=document.createElement('td');
@@ -1462,7 +1462,7 @@ function renderIS(){
       ps.innerHTML='<option value="">-- Select --</option>'+['card','cash','cheque','etransfer','eft'].map(function(v){return '<option value="'+v+'"'+(e.pay_method===v?' selected':'')+'>'+pms[v]+'</option>';}).join('');
       ps.addEventListener('change',function(){
         e.pay_method=this.value;e.data.pay_method=this.value;
-        localStorage.setItem('cc_istatus',JSON.stringify(iStatus));fbSave('cc_istatus',e.inv_num,e);renderIS();
+        localStorage.setItem('cc_istatus',JSON.stringify(iStatus));fbSave('istatus',e.inv_num,e);renderIS();
       });
       t8.appendChild(ps);
     } else {t8.innerHTML='<span style="color:#ccc">--</span>';}
@@ -1475,7 +1475,7 @@ function renderIS(){
       bankSel.addEventListener('change',function(){
         e.bank=this.value;
         localStorage.setItem('cc_istatus',JSON.stringify(iStatus));
-        fbSave('cc_istatus',e.inv_num,e);
+        fbSave('istatus',e.inv_num,e);
       });
       t8b.appendChild(bankSel);
     } else {t8b.innerHTML='<span style="color:#ccc">--</span>';}
@@ -1821,7 +1821,7 @@ function genStatement(num){
   // update() em vez de set() — só grava o campo amount_received, sem sobrescrever
   // nada mais que outro aparelho possa ter alterado nesse meio-tempo (ex: um juro
   // cobrado quase ao mesmo tempo por outra pessoa).
-  fbUpdate('cc_istatus',num,{amount_received:received});
+  fbUpdate('istatus',num,{amount_received:received});
   renderIS();renderDash();
   buildStatementPDF(en);
 }
@@ -1832,7 +1832,7 @@ function genStatement(num){
 function chargeLateFeeAtomic(num,slotIndex){
   if(!_db){toast('⚠ Sem conexão com o servidor no momento — tente de novo em alguns segundos.');return;}
   var docId=num.replace(/[^a-zA-Z0-9]/g,'_');
-  var ref=_db.collection('cc_istatus').doc(docId);
+  var ref=_db.collection('istatus').doc(docId);
   _pendingWrites++;updateSavingIndicator();
   _db.runTransaction(function(tx){
     return tx.get(ref).then(function(doc){
@@ -1966,11 +1966,11 @@ function sendToCB(num){
   var i=ledger.findIndex(function(x){return x.inv_num===d.inv_num;});
   if(i>=0)ledger[i]=d;else ledger.unshift(d);
   localStorage.setItem('cc_ledger',JSON.stringify(ledger));
-  fbSave('cc_ledger',d.inv_num,d);
+  fbSave('ledger',d.inv_num,d);
   // Mark as sent to cashbook
   en.in_cashbook=true;
   localStorage.setItem('cc_istatus',JSON.stringify(iStatus));
-  fbSave('cc_istatus',num,en);
+  fbSave('istatus',num,en);
   updateStats();renderIS();toast('✓ Sent to Cash Book!');
 }
 function genLate(num){
@@ -2031,7 +2031,7 @@ function genLate(num){
   en.status='replaced';
   en.replaced_by=d.inv_num;
   localStorage.setItem('cc_istatus',JSON.stringify(iStatus));
-  fbSave('cc_istatus',en.inv_num,en);
+  fbSave('istatus',en.inv_num,en);
 
   fillInvoice(d);
 
@@ -2135,7 +2135,7 @@ function openInvoiceDetailModal(invNum){
   ov.querySelector('#ivm-status').addEventListener('change',function(){
     en.status=this.value;
     localStorage.setItem('cc_istatus',JSON.stringify(iStatus));
-    fbUpdate('cc_istatus',en.inv_num,{status:en.status});
+    fbUpdate('istatus',en.inv_num,{status:en.status});
     renderIS();
     toast('Status updated!');
   });
@@ -2158,7 +2158,7 @@ function confirmDel(num){
   ov.querySelector('#cd-btn').addEventListener('click',function(){
     iStatus=iStatus.filter(function(e){return e.inv_num!==num;});
     localStorage.setItem('cc_istatus',JSON.stringify(iStatus));
-    fbDel('cc_istatus',num);ov.remove();renderIS();toast('Deleted.');
+    fbDel('istatus',num);ov.remove();renderIS();toast('Deleted.');
   });
 }
 
@@ -2277,7 +2277,7 @@ function saveContactDraft(){
     obj.contact=(rec.contact||'').trim();
     obj.email=(rec.email||'').trim();
     if(pos===0){obj.addr=(rec.addr||'').trim();obj.city=(rec.city||'').trim();obj.eventType=rec.eventType||'';}
-    fbSave('cc_contacts',contactDocId(obj),obj);
+    fbSave('contacts',contactDocId(obj),obj);
     keptIdxs[rec.idx]=true;
   });
   // Remove no Firestore os contatos que estavam no grupo original e foram tirados no rascunho
@@ -2286,7 +2286,7 @@ function saveContactDraft(){
     origGroup.records.forEach(function(r){
       if(!keptIdxs[r.idx]){
         var key=contactDocId(contacts[r.idx]);
-        if(key)fbDel('cc_contacts',key);
+        if(key)fbDel('contacts',key);
       }
     });
   }
@@ -2311,7 +2311,7 @@ function addNewClient(){
   var e={company:name.trim(),contact:'',email:'',addr:'',city:'',source:'Manual',date:new Date().toISOString().slice(0,10)};
   contacts.unshift(e);
   localStorage.setItem('cc_contacts',JSON.stringify(contacts));
-  fbSave('cc_contacts',contactDocId(e),e);
+  fbSave('contacts',contactDocId(e),e);
   buildClientDB();
   ctSelectedCompany=name.trim().toLowerCase();
   renderCT();
@@ -2321,7 +2321,7 @@ function deleteClientGroup(key){
   if(!g)return;
   if(!confirm('Delete client "'+g.company+'" and all '+g.records.length+' associated contact(s)? This cannot be undone.'))return;
   var idxs=g.records.map(function(r){return r.idx;}).sort(function(a,b){return b-a;});
-  idxs.forEach(function(i){var k=contactDocId(contacts[i]);contacts.splice(i,1);if(k)fbDel('cc_contacts',k);});
+  idxs.forEach(function(i){var k=contactDocId(contacts[i]);contacts.splice(i,1);if(k)fbDel('contacts',k);});
   localStorage.setItem('cc_contacts',JSON.stringify(contacts));
   ctSelectedCompany=null;
   buildClientDB();
@@ -2471,12 +2471,12 @@ function saveContact(d,src){
       contacts[ex].city=d.client_city||contacts[ex].city;
       contacts[ex].contact=attName||contacts[ex].contact;
       if(d.event_type)contacts[ex].eventType=d.event_type;
-      fbSave('cc_contacts',contactDocId(contacts[ex]),contacts[ex]);
+      fbSave('contacts',contactDocId(contacts[ex]),contacts[ex]);
       return;
     }
     var e={company:d.client_name||'',contact:attName,email:em,addr:d.client_addr||'',city:d.client_city||'',eventType:d.event_type||'',source:src,date:new Date().toISOString().slice(0,10)};
     contacts.unshift(e);
-    fbSave('cc_contacts',contactDocId(e),e);
+    fbSave('contacts',contactDocId(e),e);
   });
   localStorage.setItem('cc_contacts',JSON.stringify(contacts));
   buildClientDB();
@@ -2535,18 +2535,18 @@ function saveBook(){
   var i=ledger.findIndex(function(e){return e.inv_num===d.inv_num;});
   if(i>=0)ledger[i]=d;else ledger.unshift(d);
   localStorage.setItem('cc_ledger',JSON.stringify(ledger));
-  fbSave('cc_ledger',d.inv_num,d);
+  fbSave('ledger',d.inv_num,d);
   renderCB();updateStats();toast('Saved to Cash Book!');goTab('cash');
 }
 function updCBStatus(num,status){
   var e=ledger.find(function(x){return x.inv_num===num;});
-  if(e){e.status=status;localStorage.setItem('cc_ledger',JSON.stringify(ledger));updateStats();fbSave('cc_ledger',num,e);}
+  if(e){e.status=status;localStorage.setItem('cc_ledger',JSON.stringify(ledger));updateStats();fbSave('ledger',num,e);}
 }
 function delCB(num){
   if(!confirm('Remove '+num+'?'))return;
   ledger=ledger.filter(function(e){return e.inv_num!==num;});
   localStorage.setItem('cc_ledger',JSON.stringify(ledger));
-  fbDel('cc_ledger',num);renderCB();updateStats();
+  fbDel('ledger',num);renderCB();updateStats();
 }
 function renderCB(){
   var s=document.getElementById('cbs').value.toLowerCase();
@@ -2679,7 +2679,7 @@ function dismissDueSoon(invNum){
   if(i<0)return;
   iStatus[i].dueSoonDismissed=true;
   localStorage.setItem('cc_istatus',JSON.stringify(iStatus));
-  fbSave('cc_istatus',invNum,iStatus[i]);
+  fbSave('istatus',invNum,iStatus[i]);
   renderDash();
 }
 var _cityLeafletMap=null;
