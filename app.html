@@ -118,6 +118,7 @@ tbody td{padding:8px 11px;vertical-align:middle}
 .ss{border:1.5px solid var(--bd);border-radius:7px;font-size:11px;padding:3px 6px;cursor:pointer;outline:none}
 .cvt{padding:4px 10px;color:#fff;border:none;border-radius:7px;font-size:11px;cursor:pointer;white-space:nowrap;font-weight:600;transition:filter .15s var(--ease)}
 .cvt:disabled{opacity:.6;cursor:not-allowed}
+@keyframes ccPulse{0%,100%{opacity:1}50%{opacity:.25}}
 .lfChip{display:flex;justify-content:space-between;align-items:center;width:100%;padding:8px 11px;border-radius:8px;font-size:12px;margin-bottom:6px;border:1px solid var(--bd);font-family:inherit;text-align:left;box-sizing:border-box}
 .lfDone{background:#eef8f1;color:#1a8a4a;border-color:#c9e8d3}
 .lfLocked{background:#f4f4f7;color:var(--mut)}
@@ -215,6 +216,9 @@ tbody td{padding:8px 11px;vertical-align:middle}
 <div class="hdr">
   <img id="hl" src="" alt="CC" style="height:44px;border-radius:6px">
   <div><h1>Crazy Cravings</h1><span>Invoice &amp; Quote Generator | Cash Book</span></div>
+  <span id="savingIndicator" style="display:none;align-items:center;gap:6px;color:#fff;font-size:12.5px;font-weight:600;margin-right:10px">
+    <span style="width:9px;height:9px;border-radius:50%;background:#fff;animation:ccPulse 1s infinite ease-in-out"></span> Saving…
+  </span>
   <button onclick="doLogout()">Sign Out</button>
 </div>
 
@@ -1818,8 +1822,13 @@ function genStatement(num){
   // nada mais que outro aparelho possa ter alterado nesse meio-tempo (ex: um juro
   // cobrado quase ao mesmo tempo por outra pessoa).
   if(_db){
+    _pendingWrites++;updateSavingIndicator();
     _db.collection('cc_istatus').doc(num.replace(/[^a-zA-Z0-9]/g,'_')).update({amount_received:received})
-      .catch(function(err){ toast('⚠ Falha ao salvar no servidor: '+(err&&err.message?err.message:'erro desconhecido')); });
+      .then(function(){ _pendingWrites=Math.max(0,_pendingWrites-1);updateSavingIndicator(); })
+      .catch(function(err){
+        _pendingWrites=Math.max(0,_pendingWrites-1);updateSavingIndicator();
+        toast('⚠ Falha ao salvar no servidor: '+(err&&err.message?err.message:'erro desconhecido'));
+      });
   }
   renderIS();renderDash();
   buildStatementPDF(en);
@@ -1832,6 +1841,7 @@ function chargeLateFeeAtomic(num,slotIndex){
   if(!_db){toast('⚠ Sem conexão com o servidor no momento — tente de novo em alguns segundos.');return;}
   var docId=num.replace(/[^a-zA-Z0-9]/g,'_');
   var ref=_db.collection('cc_istatus').doc(docId);
+  _pendingWrites++;updateSavingIndicator();
   _db.runTransaction(function(tx){
     return tx.get(ref).then(function(doc){
       if(!doc.exists)throw new Error('Invoice not found on the server.');
@@ -1857,6 +1867,7 @@ function chargeLateFeeAtomic(num,slotIndex){
       return {en:en,newFee:newFee,newCharges:newCharges};
     });
   }).then(function(result){
+    _pendingWrites=Math.max(0,_pendingWrites-1);updateSavingIndicator();
     var idx=iStatus.findIndex(function(x){return x.inv_num===num;});
     var enLocal=idx>=0?iStatus[idx]:result.en;
     enLocal.late_fee_charges=result.newCharges;
@@ -1865,6 +1876,7 @@ function chargeLateFeeAtomic(num,slotIndex){
     buildStatementPDF(enLocal);
     toast('Late fee of $ '+result.newFee.toFixed(2)+' charged! Balance owed: $ '+currentBalanceOwed(enLocal).toFixed(2));
   }).catch(function(err){
+    _pendingWrites=Math.max(0,_pendingWrites-1);updateSavingIndicator();
     if(err&&err.message==='NOT_ELIGIBLE'){
       alert('This late fee isn\'t available yet — it unlocks on '+fmtDateLong(err.nextDate)+'.');
     } else if(err&&err.message==='WRONG_SLOT'){
@@ -2132,8 +2144,13 @@ function openInvoiceDetailModal(invNum){
     en.status=this.value;
     localStorage.setItem('cc_istatus',JSON.stringify(iStatus));
     if(_db){
+      _pendingWrites++;updateSavingIndicator();
       _db.collection('cc_istatus').doc(en.inv_num.replace(/[^a-zA-Z0-9]/g,'_')).update({status:en.status})
-        .catch(function(err){ toast('⚠ Falha ao salvar no servidor: '+(err&&err.message?err.message:'erro desconhecido')); });
+        .then(function(){ _pendingWrites=Math.max(0,_pendingWrites-1);updateSavingIndicator(); })
+        .catch(function(err){
+          _pendingWrites=Math.max(0,_pendingWrites-1);updateSavingIndicator();
+          toast('⚠ Falha ao salvar no servidor: '+(err&&err.message?err.message:'erro desconhecido'));
+        });
     }
     renderIS();
     toast('Status updated!');
@@ -3179,18 +3196,47 @@ function parseCityProvincePostal(text){
 
 
 var _db=null;
+// Contador de gravações em andamento — se você atualizar/fechar a página antes
+// de uma gravação terminar, o navegador pode cancelar ela no meio do caminho e
+// a mudança nunca chega a salvar de verdade no servidor. Isso avisa antes disso acontecer.
+var _pendingWrites=0;
+function updateSavingIndicator(){
+  var el=document.getElementById('savingIndicator');
+  if(!el)return;
+  el.style.display=_pendingWrites>0?'inline-flex':'none';
+}
+window.addEventListener('beforeunload',function(e){
+  if(_pendingWrites>0){
+    e.preventDefault();
+    e.returnValue='Ainda há uma gravação em andamento — se sair agora, essa alteração pode não ser salva.';
+    return e.returnValue;
+  }
+});
 function fbSave(col,id,data){
   if(!_db)return;
+  _pendingWrites++;updateSavingIndicator();
   try{
     _db.collection(col).doc(id.replace(/[^a-zA-Z0-9]/g,'_')).set(data)
-      .catch(function(err){ toast('⚠ Falha ao salvar no servidor: '+(err&&err.message?err.message:'erro desconhecido')); });
+      .then(function(){ _pendingWrites=Math.max(0,_pendingWrites-1);updateSavingIndicator(); })
+      .catch(function(err){
+        _pendingWrites=Math.max(0,_pendingWrites-1);updateSavingIndicator();
+        toast('⚠ Falha ao salvar no servidor: '+(err&&err.message?err.message:'erro desconhecido'));
+      });
   }catch(err){
+    _pendingWrites=Math.max(0,_pendingWrites-1);updateSavingIndicator();
     toast('⚠ Falha ao salvar no servidor: '+(err&&err.message?err.message:'erro desconhecido'));
   }
 }
 function fbDel(col,id){
   if(!_db)return;
-  try{_db.collection(col).doc(id.replace(/[^a-zA-Z0-9]/g,'_')).delete();}catch(e){}
+  _pendingWrites++;updateSavingIndicator();
+  try{
+    _db.collection(col).doc(id.replace(/[^a-zA-Z0-9]/g,'_')).delete()
+      .then(function(){ _pendingWrites=Math.max(0,_pendingWrites-1);updateSavingIndicator(); })
+      .catch(function(){ _pendingWrites=Math.max(0,_pendingWrites-1);updateSavingIndicator(); });
+  }catch(e){
+    _pendingWrites=Math.max(0,_pendingWrites-1);updateSavingIndicator();
+  }
 }
 function loadFirebase(){
   var s1=document.createElement('script');
