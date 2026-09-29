@@ -1821,15 +1821,7 @@ function genStatement(num){
   // update() em vez de set() — só grava o campo amount_received, sem sobrescrever
   // nada mais que outro aparelho possa ter alterado nesse meio-tempo (ex: um juro
   // cobrado quase ao mesmo tempo por outra pessoa).
-  if(_db){
-    _pendingWrites++;updateSavingIndicator();
-    _db.collection('cc_istatus').doc(num.replace(/[^a-zA-Z0-9]/g,'_')).update({amount_received:received})
-      .then(function(){ _pendingWrites=Math.max(0,_pendingWrites-1);updateSavingIndicator(); })
-      .catch(function(err){
-        _pendingWrites=Math.max(0,_pendingWrites-1);updateSavingIndicator();
-        reportSaveFailure(err);
-      });
-  }
+  fbUpdate('cc_istatus',num,{amount_received:received});
   renderIS();renderDash();
   buildStatementPDF(en);
 }
@@ -2143,15 +2135,7 @@ function openInvoiceDetailModal(invNum){
   ov.querySelector('#ivm-status').addEventListener('change',function(){
     en.status=this.value;
     localStorage.setItem('cc_istatus',JSON.stringify(iStatus));
-    if(_db){
-      _pendingWrites++;updateSavingIndicator();
-      _db.collection('cc_istatus').doc(en.inv_num.replace(/[^a-zA-Z0-9]/g,'_')).update({status:en.status})
-        .then(function(){ _pendingWrites=Math.max(0,_pendingWrites-1);updateSavingIndicator(); })
-        .catch(function(err){
-          _pendingWrites=Math.max(0,_pendingWrites-1);updateSavingIndicator();
-          reportSaveFailure(err);
-        });
-    }
+    fbUpdate('cc_istatus',en.inv_num,{status:en.status});
     renderIS();
     toast('Status updated!');
   });
@@ -3210,17 +3194,36 @@ var _pendingWrites=0;
 function updateSavingIndicator(){
   var el=document.getElementById('savingIndicator');
   if(!el)return;
-  el.style.display=_pendingWrites>0?'inline-flex':'none';
+  var waiting=_pendingWrites>0||(typeof _writeQueue!=='undefined'&&_writeQueue.length>0);
+  el.style.display=waiting?'inline-flex':'none';
 }
 window.addEventListener('beforeunload',function(e){
-  if(_pendingWrites>0){
+  var waiting=_pendingWrites>0||(typeof _writeQueue!=='undefined'&&_writeQueue.length>0);
+  if(waiting){
     e.preventDefault();
     e.returnValue='Ainda há uma gravação em andamento — se sair agora, essa alteração pode não ser salva.';
     return e.returnValue;
   }
 });
+// Fila de gravações pendentes — enquanto a conexão com o servidor ainda não
+// terminou de abrir (_db null), NENHUMA gravação pode ser descartada. Fica
+// na fila e é reenviada automaticamente assim que a conexão fica pronta.
+var _writeQueue=[];
+function flushWriteQueue(){
+  if(!_db||!_writeQueue.length)return;
+  var queued=_writeQueue;_writeQueue=[];
+  queued.forEach(function(item){
+    if(item.type==='save')fbSave(item.col,item.id,item.data);
+    else if(item.type==='update')fbUpdate(item.col,item.id,item.data);
+    else fbDel(item.col,item.id);
+  });
+}
 function fbSave(col,id,data){
-  if(!_db)return;
+  if(!_db){
+    _writeQueue.push({type:'save',col:col,id:id,data:data});
+    updateSavingIndicator();
+    return;
+  }
   _pendingWrites++;updateSavingIndicator();
   try{
     _db.collection(col).doc(id.replace(/[^a-zA-Z0-9]/g,'_')).set(data)
@@ -3234,8 +3237,31 @@ function fbSave(col,id,data){
     reportSaveFailure(err);
   }
 }
+function fbUpdate(col,id,fields){
+  if(!_db){
+    _writeQueue.push({type:'update',col:col,id:id,data:fields});
+    updateSavingIndicator();
+    return;
+  }
+  _pendingWrites++;updateSavingIndicator();
+  try{
+    _db.collection(col).doc(id.replace(/[^a-zA-Z0-9]/g,'_')).update(fields)
+      .then(function(){ _pendingWrites=Math.max(0,_pendingWrites-1);updateSavingIndicator(); })
+      .catch(function(err){
+        _pendingWrites=Math.max(0,_pendingWrites-1);updateSavingIndicator();
+        reportSaveFailure(err);
+      });
+  }catch(err){
+    _pendingWrites=Math.max(0,_pendingWrites-1);updateSavingIndicator();
+    reportSaveFailure(err);
+  }
+}
 function fbDel(col,id){
-  if(!_db)return;
+  if(!_db){
+    _writeQueue.push({type:'del',col:col,id:id});
+    updateSavingIndicator();
+    return;
+  }
   _pendingWrites++;updateSavingIndicator();
   try{
     _db.collection(col).doc(id.replace(/[^a-zA-Z0-9]/g,'_')).delete()
@@ -3262,6 +3288,7 @@ function loadFirebase(){
           appId:"1:445386914627:web:7800ce0e67bcac3b1a8df6"
         });
         _db=firebase.firestore();
+        flushWriteQueue(); // manda pra frente qualquer gravação que ficou esperando a conexão
         // Sincronização em tempo real — qualquer alteração feita em outro
         // computador aparece aqui sozinha, sem precisar recarregar a página.
         var cols={ledger:'cc_ledger',quotes:'cc_quotes',istatus:'cc_istatus',contacts:'cc_contacts'};
