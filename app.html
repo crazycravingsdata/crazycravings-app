@@ -1827,7 +1827,7 @@ function genStatement(num){
       .then(function(){ _pendingWrites=Math.max(0,_pendingWrites-1);updateSavingIndicator(); })
       .catch(function(err){
         _pendingWrites=Math.max(0,_pendingWrites-1);updateSavingIndicator();
-        toast('⚠ Falha ao salvar no servidor: '+(err&&err.message?err.message:'erro desconhecido'));
+        reportSaveFailure(err);
       });
   }
   renderIS();renderDash();
@@ -2149,7 +2149,7 @@ function openInvoiceDetailModal(invNum){
         .then(function(){ _pendingWrites=Math.max(0,_pendingWrites-1);updateSavingIndicator(); })
         .catch(function(err){
           _pendingWrites=Math.max(0,_pendingWrites-1);updateSavingIndicator();
-          toast('⚠ Falha ao salvar no servidor: '+(err&&err.message?err.message:'erro desconhecido'));
+          reportSaveFailure(err);
         });
     }
     renderIS();
@@ -3196,6 +3196,13 @@ function parseCityProvincePostal(text){
 
 
 var _db=null;
+// Falha de gravação precisa ser impossível de não ver — um toast normal some
+// sozinho em segundos e pode passar despercebido. Isso trava a tela até
+// confirmar que a pessoa viu.
+function reportSaveFailure(err){
+  var msg=err&&err.message?err.message:'erro desconhecido';
+  alert('⚠ ATENÇÃO: uma gravação falhou e NÃO foi salva no servidor.\n\nMotivo: '+msg+'\n\nAnote o que você estava tentando salvar e tente de novo — se persistir, avise o suporte com essa mensagem de erro.');
+}
 // Contador de gravações em andamento — se você atualizar/fechar a página antes
 // de uma gravação terminar, o navegador pode cancelar ela no meio do caminho e
 // a mudança nunca chega a salvar de verdade no servidor. Isso avisa antes disso acontecer.
@@ -3220,11 +3227,11 @@ function fbSave(col,id,data){
       .then(function(){ _pendingWrites=Math.max(0,_pendingWrites-1);updateSavingIndicator(); })
       .catch(function(err){
         _pendingWrites=Math.max(0,_pendingWrites-1);updateSavingIndicator();
-        toast('⚠ Falha ao salvar no servidor: '+(err&&err.message?err.message:'erro desconhecido'));
+        reportSaveFailure(err);
       });
   }catch(err){
     _pendingWrites=Math.max(0,_pendingWrites-1);updateSavingIndicator();
-    toast('⚠ Falha ao salvar no servidor: '+(err&&err.message?err.message:'erro desconhecido'));
+    reportSaveFailure(err);
   }
 }
 function fbDel(col,id){
